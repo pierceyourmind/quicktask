@@ -43,12 +43,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 - `LSUIElement = YES` in Info.plist to suppress the Dock icon
 - Validate default hotkey (Cmd+Shift+Space) does not conflict with system shortcuts before shipping
 
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Xcode project setup, SPM dependencies (KeyboardShortcuts, Defaults), AppDelegate, LSUIElement
-- [ ] 01-02: NSStatusItem + NSPanel subclass (FloatingPanel), panel show/hide wiring, activation policy
-- [ ] 01-03: HotkeyService, global hotkey registration, focus-return on dismiss, click-outside dismissal
+- [ ] 01-01-PLAN.md — Xcode project setup, SPM dependencies (KeyboardShortcuts, Defaults), AppDelegate, LSUIElement
+- [ ] 01-02-PLAN.md — NSStatusItem + NSPanel subclass (FloatingPanel), panel show/hide wiring, activation policy
+- [ ] 01-03-PLAN.md — HotkeyService, global hotkey registration, focus-return on dismiss, click-outside dismissal
 
 ---
 
@@ -192,7 +192,7 @@ Drag-to-reorder has a known SwiftUI text-field conflict that adds non-trivial im
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. App Shell, Hotkey, and Floating Panel | 0/3 | Not started | - |
+| 1. App Shell, Hotkey, and Floating Panel | 0/3 | Planning complete | - |
 | 2. Task Data Model, Persistence, and Capture UI | 0/3 | Not started | - |
 | 3. Settings, Launch at Login, and v1 Polish | 0/2 | Not started | - |
 | 4. Post-Validation Enhancements (v1.x) | 0/TBD | Not started | - |
@@ -200,4 +200,4 @@ Drag-to-reorder has a known SwiftUI text-field conflict that adds non-trivial im
 ---
 
 *Roadmap created: 2026-02-17*
-*Last updated: 2026-02-17 after initial creation*
+*Last updated: 2026-02-17 after Phase 1 planning*
