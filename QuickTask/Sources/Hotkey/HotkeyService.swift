@@ -2,12 +2,12 @@ import KeyboardShortcuts
 
 /// Define the global hotkey name used by KeyboardShortcuts library.
 ///
-/// Cmd+Shift+Space is chosen to avoid conflicts with:
+/// Ctrl+Option+Space avoids conflicts with:
 /// - Cmd+Space: Spotlight
+/// - Cmd+Shift+Space: Emoji & Symbols / Input Source switching
 /// - Cmd+Shift+3/4/5: Screenshots
-/// - Other common system shortcuts
 extension KeyboardShortcuts.Name {
-    static let togglePanel = Self("togglePanel", default: .init(.space, modifiers: [.command, .shift]))
+    static let togglePanel = Self("togglePanel", default: .init(.space, modifiers: [.control, .option]))
 }
 
 /// HotkeyService registers the global hotkey that toggles the QuickTask floating panel
@@ -27,7 +27,7 @@ final class HotkeyService {
 
     private init() {}
 
-    /// Registers the global Cmd+Shift+Space hotkey.
+    /// Registers the global Ctrl+Option+Space hotkey.
     /// Must be called from `applicationDidFinishLaunching` so the hotkey is active immediately.
     func register() {
         KeyboardShortcuts.onKeyUp(for: .togglePanel) {
