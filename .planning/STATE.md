@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing Phase 2
-Last activity: 2026-02-17 — Completed 02-01: data layer (Task, FileStore, TaskRepository, TaskStore) + environment injection
+Last activity: 2026-02-17 — Completed 02-02: capture UI (TaskInputView with auto-focus, TaskListView, ContentView layout)
 
-Progress: [████░░░░░░] 44%
+Progress: [████████░░] 56%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: ~4 min
-- Total execution time: ~16 min
+- Total plans completed: 5
+- Average duration: ~3 min
+- Total execution time: ~17 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-app-shell-hotkey-floating-panel | 3 | ~14 min | ~4 min |
-| 02-task-data-model-persistence-capture-ui | 1 | ~2 min | ~2 min |
+| 02-task-data-model-persistence-capture-ui | 2 | ~3 min | ~1.5 min |
 
-**Recent Trend:** 4 plans completed
+**Recent Trend:** 5 plans completed
 
 *Updated after each plan completion*
 
@@ -59,6 +59,9 @@ Recent decisions affecting current work:
 - [02-01]: AnyView wrapper for FloatingPanel<AnyView>? stored property — FloatingPanel<some View> is invalid as stored property type in Swift
 - [02-01]: configure(with:) pattern not singleton TaskStore — TaskStore created in AppDelegate, passed to PanelManager for explicit ownership
 - [02-01]: Synchronous persist() on every mutation — acceptable for <500 tasks; no async/debouncing needed
+- [02-02]: NSWindow.didBecomeKeyNotification (not onAppear) for auto-focus — FloatingPanel reuses NSHostingView on show/hide cycles; onAppear only fires once on first show
+- [02-02]: DispatchQueue.main.async in notification handler — window may not be fully promoted to key at notification fire time; async dispatch ensures safe focus assignment
+- [02-02]: TaskListView intentionally minimal (Text body only) — Plan 03 replaces with TaskRowView for checkbox/strikethrough/delete
 
 ### Pending Todos
 
@@ -73,5 +76,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 02-01-PLAN.md (Task model, FileStore, TaskRepository, TaskStore data layer; PanelManager and AppDelegate wired with TaskStore environment injection).
+Stopped at: Completed 02-02-PLAN.md (TaskInputView with auto-focus via NSWindow.didBecomeKeyNotification, TaskListView minimal list, ContentView real layout replacing placeholder).
 Resume file: None
