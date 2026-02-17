@@ -75,12 +75,12 @@ Plans:
 - Write to disk synchronously on every mutation (acceptable for <500 tasks; background queue is a later optimization)
 - Use `@Observable` (macOS 14+) — no Combine needed
 
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Task model (Codable + Identifiable), FileStore, TaskRepository, TaskStore
-- [ ] 02-02: ContentView, TaskInputView (auto-focus, Return-to-add, clear-on-submit)
-- [ ] 02-03: TaskListView, TaskRowView (checkbox, strikethrough + opacity, delete)
+- [ ] 02-01-PLAN.md — Task model, FileStore, TaskRepository, TaskStore data layer + PanelManager/AppDelegate wiring for TaskStore injection
+- [ ] 02-02-PLAN.md — ContentView layout, TaskInputView with auto-focus (NSWindow.didBecomeKeyNotification) and Return-to-add, minimal TaskListView
+- [ ] 02-03-PLAN.md — TaskRowView (checkbox, strikethrough, opacity, delete), TaskListView updated to use TaskRowView
 
 ---
 
@@ -200,4 +200,4 @@ Drag-to-reorder has a known SwiftUI text-field conflict that adds non-trivial im
 ---
 
 *Roadmap created: 2026-02-17*
-*Last updated: 2026-02-17 after Phase 1 planning*
+*Last updated: 2026-02-17 after Phase 2 planning*
