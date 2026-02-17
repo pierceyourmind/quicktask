@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         setupStatusItem()
+        HotkeyService.shared.register()
 
         print("[QuickTask] App launched as menu bar agent")
     }
