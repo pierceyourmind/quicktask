@@ -10,26 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI)
-Plan: 0 of 3 in current phase
-Status: Ready to plan Phase 2
-Last activity: 2026-02-17 — Phase 1 complete; hotkey not firing (Ctrl+Option+Space) needs debugging
+Plan: 1 of 3 in current phase
+Status: Executing Phase 2
+Last activity: 2026-02-17 — Completed 02-01: data layer (Task, FileStore, TaskRepository, TaskStore) + environment injection
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: ~4 min
-- Total execution time: ~14 min
+- Total execution time: ~16 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-app-shell-hotkey-floating-panel | 3 | ~14 min | ~4 min |
+| 02-task-data-model-persistence-capture-ui | 1 | ~2 min | ~2 min |
 
-**Recent Trend:** 3 plans completed
+**Recent Trend:** 4 plans completed
 
 *Updated after each plan completion*
 
@@ -55,6 +56,9 @@ Recent decisions affecting current work:
 - [01-03]: NSEvent.addGlobalMonitorForEvents (not local) — must detect clicks in other apps' windows for click-outside
 - [01-03]: activate(options: []) (empty, not .activateIgnoringOtherApps) — gentle reactivation sufficient when panel is already hidden
 - [01-03]: Both click monitor AND resignKey() dismiss paths kept — redundant by design; resignKey() may not fire in all macOS configurations
+- [02-01]: AnyView wrapper for FloatingPanel<AnyView>? stored property — FloatingPanel<some View> is invalid as stored property type in Swift
+- [02-01]: configure(with:) pattern not singleton TaskStore — TaskStore created in AppDelegate, passed to PanelManager for explicit ownership
+- [02-01]: Synchronous persist() on every mutation — acceptable for <500 tasks; no async/debouncing needed
 
 ### Pending Todos
 
@@ -69,5 +73,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 01-03-PLAN.md (HotkeyService global hotkey, Escape/click-outside dismiss, focus-return to previous app). Phase 1 code complete. Runtime verification of 8 behavioral checks deferred to macOS.
+Stopped at: Completed 02-01-PLAN.md (Task model, FileStore, TaskRepository, TaskStore data layer; PanelManager and AppDelegate wired with TaskStore environment injection).
 Resume file: None
