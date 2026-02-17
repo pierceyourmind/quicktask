@@ -11,6 +11,8 @@ import SwiftUI
 ///   runs as .accessory and may not be the active application when the panel is shown.
 /// - `makeKey()` grants key-window status to the panel so text fields receive input,
 ///   without performing a full app activation (which would steal focus visually).
+/// - `previousApp` captures the frontmost app before the panel appears so focus can be
+///   returned to it on every dismissal path (Escape, click-outside, hotkey toggle).
 final class PanelManager {
 
     /// Shared singleton instance — use PanelManager.shared.toggle() from AppDelegate
@@ -26,7 +28,16 @@ final class PanelManager {
     }()
 
     /// Tracks whether the panel is currently visible.
+    /// `hide()` checks this guard to remain idempotent — safe to call multiple times.
     private(set) var isVisible: Bool = false
+
+    /// The application that was frontmost before the panel appeared.
+    /// Captured in show() and used in hide() to return focus to the user's previous context.
+    private var previousApp: NSRunningApplication?
+
+    /// Global mouse-click monitor for detecting clicks outside the panel.
+    /// Installed in show(), removed in hide().
+    private var clickMonitor: Any?
 
     /// Toggles the panel between visible and hidden states.
     func toggle() {
@@ -41,6 +52,10 @@ final class PanelManager {
     /// vertical center) and brings it to front as a key window for text input.
     func show() {
         guard let screen = NSScreen.main else { return }
+
+        // Capture the frontmost app BEFORE showing — once our panel becomes key,
+        // NSWorkspace.shared.frontmostApplication changes to QuickTask (or nil for .accessory apps).
+        previousApp = NSWorkspace.shared.frontmostApplication
 
         let screenFrame = screen.visibleFrame
         let panelWidth: CGFloat = 400
@@ -65,11 +80,40 @@ final class PanelManager {
         panel.makeKey()
 
         isVisible = true
+
+        // Monitor for clicks in OTHER applications' windows to dismiss the panel.
+        // `addGlobalMonitorForEvents` (not Local) fires when the user clicks anywhere
+        // outside our app's windows. We do NOT need a local monitor — clicks within
+        // the panel should NOT dismiss it.
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self, self.isVisible else { return }
+            self.hide()
+        }
     }
 
-    /// Hides the floating panel without destroying it.
+    /// Hides the floating panel without destroying it, and returns focus to the
+    /// previously active application.
+    ///
+    /// This method is idempotent: calling it when the panel is already hidden is safe.
+    /// Multiple dismissal paths (Escape, click-outside global monitor, resignKey,
+    /// hotkey toggle) may call hide() in rapid succession — the guard prevents
+    /// double-dismiss side effects.
     func hide() {
+        guard isVisible else { return }
+
+        // Remove the click monitor first to prevent it from firing during our own hide
+        if let monitor = clickMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickMonitor = nil
+        }
+
         panel.orderOut(nil)
         isVisible = false
+
+        // Return focus to the app that was active before the panel appeared.
+        // `.activate(options: [])` is used (not `.activateIgnoringOtherApps`)
+        // because we just hid our panel and the gentle activation is sufficient.
+        previousApp?.activate(options: [])
+        previousApp = nil
     }
 }

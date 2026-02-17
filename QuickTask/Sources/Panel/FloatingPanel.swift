@@ -11,7 +11,9 @@ import SwiftUI
 /// - `isReleasedWhenClosed = false` prevents ARC from releasing the panel on `orderOut(_:)`,
 ///   which would cause a crash on the next toggle (Pitfall from ARCHITECTURE.md).
 /// - `hidesOnDeactivate = false` ensures explicit dismissal rather than auto-hide when the
-///   user clicks elsewhere. Dismissal is handled by AppDelegate/hotkey logic.
+///   user clicks elsewhere. Dismissal is handled by PanelManager.shared.hide().
+/// - `resignKey()` detects when the panel loses key-window status (user clicked elsewhere)
+///   and triggers PanelManager.shared.hide() so focus returns to the previous app.
 class FloatingPanel<Content: View>: NSPanel {
 
     init(rootView: Content) {
@@ -46,7 +48,9 @@ class FloatingPanel<Content: View>: NSPanel {
         // deallocated object and crash.
         isReleasedWhenClosed = false
 
-        // Dismissal is handled explicitly (icon click / hotkey), not by deactivation
+        // Dismissal is handled explicitly via PanelManager.shared.hide(), not by deactivation.
+        // resignKey() below provides a safety net for cases where deactivation-based
+        // dismissal is desired (user clicks another app window).
         hidesOnDeactivate = false
 
         // SwiftUI content provides its own background styling
@@ -66,4 +70,27 @@ class FloatingPanel<Content: View>: NSPanel {
     /// Returning false prevents the panel from becoming the "main" window, which would
     /// interfere with the previously active application's main-window status.
     override var canBecomeMain: Bool { false }
+
+    /// Handle keyboard events. Escape (keyCode 53) closes the panel.
+    /// All other keys are passed to super so normal text input continues to work.
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // 53 = Escape key
+            PanelManager.shared.hide()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
+    /// Called when the panel loses key-window status — e.g., user clicks another
+    /// application's window or another window becomes key.
+    ///
+    /// PanelManager.hide() is idempotent, so it is safe to call even if the global
+    /// click monitor already triggered hide() a moment earlier. The `guard isVisible`
+    /// check in PanelManager.hide() prevents double-dismiss side effects.
+    override func resignKey() {
+        super.resignKey()
+        if isVisible {
+            PanelManager.shared.hide()
+        }
+    }
 }
