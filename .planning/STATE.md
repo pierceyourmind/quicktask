@@ -10,26 +10,26 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 1 of 3 v1 phases (App Shell, Hotkey, and Floating Panel)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-02-17 — Roadmap created, research complete
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-17 — Plan 01-01 complete (SPM package scaffold)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 11%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 1
+- Average duration: 2 min
+- Total execution time: 2 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-app-shell-hotkey-floating-panel | 1 | 2 min | 2 min |
 
-**Recent Trend:** No data yet
+**Recent Trend:** 1 plan completed
 
 *Updated after each plan completion*
 
@@ -44,6 +44,9 @@ Recent decisions affecting current work:
 - [Research]: Use KeyboardShortcuts SPM 2.4.0 for the global hotkey — never SwiftUI .keyboardShortcut() (does not fire when backgrounded)
 - [Research]: JSON + FileManager for task persistence — no Core Data, no database server
 - [Research]: Swift 6.1 with @Observable (macOS 14+) — Combine not needed
+- [01-01]: swift-tools-version 5.10 over 6.0 — avoids strict concurrency errors before MainActor annotations are in place
+- [01-01]: Runtime NSApp.setActivationPolicy(.accessory) over Info.plist LSUIElement alone — SPM executables may not auto-apply plist key
+- [01-01]: Settings { EmptyView() } as SwiftUI App body — real UI is NSPanel managed by AppDelegate (Plan 02)
 
 ### Pending Todos
 
@@ -57,5 +60,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Roadmap and STATE.md written; all 22 v1 requirements mapped; ready to run plan-phase 1
+Stopped at: Completed 01-01-PLAN.md (SPM package scaffold, AppDelegate, entry point)
 Resume file: None
