@@ -5,8 +5,9 @@ import SwiftUI
 /// the FloatingPanel. It is the single source of truth for panel visibility state.
 ///
 /// Design notes:
-/// - `panel` is `lazy` so the NSPanel and SwiftUI hosting view are created on first use,
-///   not at app launch — keeping startup fast.
+/// - `panel` is created in `configure(with:)` rather than lazily at first access.
+///   This allows TaskStore to be injected into the SwiftUI environment before the panel
+///   is shown for the first time.
 /// - `orderFrontRegardless()` is required (not `makeKeyAndOrderFront`) because the app
 ///   runs as .accessory and may not be the active application when the panel is shown.
 /// - `makeKey()` grants key-window status to the panel so text fields receive input,
@@ -21,11 +22,12 @@ final class PanelManager {
 
     private init() {}
 
-    /// Lazily creates the floating panel on first access. Using `lazy` defers NSPanel
-    /// initialization until the panel is actually needed.
-    private lazy var panel: FloatingPanel<ContentView> = {
-        FloatingPanel(rootView: ContentView())
-    }()
+    /// The floating panel. Created in configure(with:) when the TaskStore is available.
+    /// Optional so that methods are safe to call before configure(with:) completes (guards below).
+    private var panel: FloatingPanel<AnyView>?
+
+    /// The TaskStore injected at app launch via configure(with:).
+    private var taskStore: TaskStore?
 
     /// Tracks whether the panel is currently visible.
     /// `hide()` checks this guard to remain idempotent — safe to call multiple times.
@@ -39,6 +41,21 @@ final class PanelManager {
     /// Installed in show(), removed in hide().
     private var clickMonitor: Any?
 
+    /// Configures the panel manager with the shared TaskStore.
+    ///
+    /// Called once from AppDelegate.applicationDidFinishLaunching. Creates the
+    /// FloatingPanel with ContentView injected into the SwiftUI environment so that
+    /// all descendant views can access TaskStore via @Environment(TaskStore.self).
+    ///
+    /// CRITICAL: The `.environment(store)` call on the rootView is what makes
+    /// `@Environment(TaskStore.self)` work in child views. NSHostingView creates
+    /// an isolated SwiftUI environment — the store MUST be injected here, not from
+    /// QuickTaskApp's body (which is just `Settings { EmptyView() }`).
+    func configure(with store: TaskStore) {
+        self.taskStore = store
+        panel = FloatingPanel(rootView: AnyView(ContentView().environment(store)))
+    }
+
     /// Toggles the panel between visible and hidden states.
     func toggle() {
         if isVisible {
@@ -51,6 +68,7 @@ final class PanelManager {
     /// Positions the panel in Spotlight-style (centered horizontally, slightly above
     /// vertical center) and brings it to front as a key window for text input.
     func show() {
+        guard let panel else { return }
         guard let screen = NSScreen.main else { return }
 
         // Capture the frontmost app BEFORE showing — once our panel becomes key,
@@ -107,7 +125,7 @@ final class PanelManager {
             clickMonitor = nil
         }
 
-        panel.orderOut(nil)
+        panel?.orderOut(nil)
         isVisible = false
 
         // Return focus to the app that was active before the panel appeared.
