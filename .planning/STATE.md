@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Zero-friction task capture — one hotkey and a few keystrokes saves a task before it vanishes
-**Current focus:** Phase 1 complete (code) — runtime verification on macOS required before Phase 2
+**Current focus:** Phase 2 — Task Data Model, Persistence, and Capture UI
 
 ## Current Position
 
-Phase: 1 of 3 v1 phases (App Shell, Hotkey, and Floating Panel)
-Plan: 3 of 3 in current phase — COMPLETE (code complete; runtime verification deferred to macOS)
-Status: Phase 1 code complete. Awaiting macOS runtime verification of all 9 requirements before Phase 2.
-Last activity: 2026-02-17 — Plan 01-03 complete (HotkeyService, Escape/click-outside dismiss, focus-return)
+Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI)
+Plan: 0 of 3 in current phase
+Status: Ready to plan Phase 2
+Last activity: 2026-02-17 — Phase 1 complete; hotkey not firing (Ctrl+Option+Space) needs debugging
 
 Progress: [███░░░░░░░] 33%
 
