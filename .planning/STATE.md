@@ -5,31 +5,31 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Zero-friction task capture — one hotkey and a few keystrokes saves a task before it vanishes
-**Current focus:** Phase 1 — App Shell, Hotkey, and Floating Panel
+**Current focus:** Phase 1 complete (code) — runtime verification on macOS required before Phase 2
 
 ## Current Position
 
 Phase: 1 of 3 v1 phases (App Shell, Hotkey, and Floating Panel)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-17 — Plan 01-02 complete (NSStatusItem + FloatingPanel + PanelManager)
+Plan: 3 of 3 in current phase — COMPLETE (code complete; runtime verification deferred to macOS)
+Status: Phase 1 code complete. Awaiting macOS runtime verification of all 9 requirements before Phase 2.
+Last activity: 2026-02-17 — Plan 01-03 complete (HotkeyService, Escape/click-outside dismiss, focus-return)
 
-Progress: [██░░░░░░░░] 22%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 2 min
-- Total execution time: 4 min
+- Total plans completed: 3
+- Average duration: ~4 min
+- Total execution time: ~14 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-app-shell-hotkey-floating-panel | 2 | 4 min | 2 min |
+| 01-app-shell-hotkey-floating-panel | 3 | ~14 min | ~4 min |
 
-**Recent Trend:** 2 plans completed
+**Recent Trend:** 3 plans completed
 
 *Updated after each plan completion*
 
@@ -51,6 +51,10 @@ Recent decisions affecting current work:
 - [01-02]: isReleasedWhenClosed=false on FloatingPanel — prevents ARC crash on repeated show/hide toggle
 - [01-02]: orderFrontRegardless()+makeKey() instead of makeKeyAndOrderFront — avoids full app activation for .accessory apps
 - [01-02]: NSStatusItem as private var on AppDelegate instance — strong reference prevents ARC deallocation (menu icon vanish bug)
+- [01-03]: KeyboardShortcuts.onKeyUp (not onKeyDown) for toggle hotkey — avoids repeated fires on key-hold
+- [01-03]: NSEvent.addGlobalMonitorForEvents (not local) — must detect clicks in other apps' windows for click-outside
+- [01-03]: activate(options: []) (empty, not .activateIgnoringOtherApps) — gentle reactivation sufficient when panel is already hidden
+- [01-03]: Both click monitor AND resignKey() dismiss paths kept — redundant by design; resignKey() may not fire in all macOS configurations
 
 ### Pending Todos
 
@@ -58,11 +62,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1 planning]: Default hotkey must be validated against system shortcut list before finalizing. Recommended: Cmd+Shift+Space or Ctrl+Option+Space. Avoid Cmd+Space (Spotlight), Cmd+Shift+3/4/5 (screenshots).
+- [01-03 deferred]: Runtime verification of all 9 Phase 1 requirements (SHELL-01 through SHELL-05, HKEY-01 through HKEY-04) must be done on macOS before Phase 2 begins. Dev environment is Linux (Fedora); Swift toolchain and macOS APIs unavailable.
 - [Future]: App Store vs. direct distribution decision is deferred until after v1 ships — no technical impact on current work.
+- [Resolved]: Default hotkey Cmd+Shift+Space selected — avoids Spotlight (Cmd+Space), screenshots (Cmd+Shift+3/4/5), Mission Control (Ctrl+Up).
 
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 01-02-PLAN.md (NSStatusItem menu bar icon, FloatingPanel NSPanel subclass, PanelManager toggle)
+Stopped at: Completed 01-03-PLAN.md (HotkeyService global hotkey, Escape/click-outside dismiss, focus-return to previous app). Phase 1 code complete. Runtime verification of 8 behavioral checks deferred to macOS.
 Resume file: None
