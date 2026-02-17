@@ -1,17 +1,18 @@
 import SwiftUI
 
-/// TaskListView displays the current task list in a plain scrollable list.
+/// TaskListView displays the complete task list using TaskRowView for each row.
 ///
-/// This is the minimal implementation for Plan 02 — it shows task titles to satisfy CAPT-04
-/// (tasks appear in the list after capture). Plan 03 will replace the `Text(task.title)` body
-/// with `TaskRowView(task: task)` to add checkbox, strikethrough, and delete behavior.
+/// All tasks are shown in insertion order — completed tasks are never filtered out (TASK-03).
+/// Row separators are hidden because TaskRowView provides its own visual structure; default
+/// separators add visual noise between checkbox rows.
 struct TaskListView: View {
 
     @Environment(TaskStore.self) private var store
 
     var body: some View {
         List(store.tasks) { task in
-            Text(task.title)
+            TaskRowView(task: task)
+                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
     }
