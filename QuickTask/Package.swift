@@ -5,13 +5,12 @@ let package = Package(
     name: "QuickTask",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "2.4.0"),
-        .package(url: "https://github.com/sindresorhus/Defaults", exact: "9.0.0"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "1.10.0"),
     ],
     targets: [
         .executableTarget(
             name: "QuickTask",
-            dependencies: ["KeyboardShortcuts", "Defaults"],
+            dependencies: ["KeyboardShortcuts"],
             path: "Sources",
             resources: [
                 .copy("Resources"),
