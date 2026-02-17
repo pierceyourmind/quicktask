@@ -12,7 +12,7 @@ QuickTask ships in three focused phases. Phase 1 resolves all critical architect
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: App Shell, Hotkey, and Floating Panel** - Running macOS app with menu bar icon, global hotkey, and dismissible floating panel
+- [x] **Phase 1: App Shell, Hotkey, and Floating Panel** - Running macOS app with menu bar icon, global hotkey, and dismissible floating panel (completed 2026-02-17)
 - [ ] **Phase 2: Task Data Model, Persistence, and Capture UI** - Full task capture and checklist with persistence across restarts
 - [ ] **Phase 3: Settings, Launch at Login, and v1 Polish** - Complete v1 ready for daily use
 - [ ] **Phase 4 (v1.x): Post-Validation Enhancements** - Task count badge, drag-to-reorder, configurable hotkey, bulk-clear
@@ -192,7 +192,7 @@ Drag-to-reorder has a known SwiftUI text-field conflict that adds non-trivial im
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. App Shell, Hotkey, and Floating Panel | 0/3 | Planning complete | - |
+| 1. App Shell, Hotkey, and Floating Panel | 0/3 | Complete    | 2026-02-17 |
 | 2. Task Data Model, Persistence, and Capture UI | 0/3 | Not started | - |
 | 3. Settings, Launch at Login, and v1 Polish | 0/2 | Not started | - |
 | 4. Post-Validation Enhancements (v1.x) | 0/TBD | Not started | - |
