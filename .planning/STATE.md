@@ -5,32 +5,32 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** Zero-friction task capture — one hotkey and a few keystrokes saves a task before it vanishes
-**Current focus:** Phase 2 — Task Data Model, Persistence, and Capture UI
+**Current focus:** Phase 2 complete — Phase 3 next (Polish and Settings)
 
 ## Current Position
 
-Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI)
-Plan: 2 of 3 in current phase
-Status: Executing Phase 2
-Last activity: 2026-02-17 — Completed 02-02: capture UI (TaskInputView with auto-focus, TaskListView, ContentView layout)
+Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI) — COMPLETE
+Plan: 3 of 3 in current phase — COMPLETE
+Status: Phase 2 complete; ready to begin Phase 3
+Last activity: 2026-02-17 — Completed 02-03: TaskRowView with checkbox/strikethrough/opacity/delete; TaskListView updated
 
-Progress: [████████░░] 56%
+Progress: [█████████░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: ~3 min
-- Total execution time: ~17 min
+- Total execution time: ~18 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-app-shell-hotkey-floating-panel | 3 | ~14 min | ~4 min |
-| 02-task-data-model-persistence-capture-ui | 2 | ~3 min | ~1.5 min |
+| 02-task-data-model-persistence-capture-ui | 3 | ~4 min | ~1.3 min |
 
-**Recent Trend:** 5 plans completed
+**Recent Trend:** 6 plans completed
 
 *Updated after each plan completion*
 
@@ -61,7 +61,11 @@ Recent decisions affecting current work:
 - [02-01]: Synchronous persist() on every mutation — acceptable for <500 tasks; no async/debouncing needed
 - [02-02]: NSWindow.didBecomeKeyNotification (not onAppear) for auto-focus — FloatingPanel reuses NSHostingView on show/hide cycles; onAppear only fires once on first show
 - [02-02]: DispatchQueue.main.async in notification handler — window may not be fully promoted to key at notification fire time; async dispatch ensures safe focus assignment
-- [02-02]: TaskListView intentionally minimal (Text body only) — Plan 03 replaces with TaskRowView for checkbox/strikethrough/delete
+- [02-03]: .toggleStyle(.checkbox) for native macOS HIG checkbox — not hand-rolled custom toggle
+- [02-03]: .opacity(0.4) on outer HStack not just Text — entire row fades when complete (checkbox + text + delete icon)
+- [02-03]: Completed tasks never filtered from list — TASK-03 requirement; only visual styling changes
+- [02-03]: .listRowSeparator(.hidden) on TaskRowView rows — row provides own structure; default separators add noise
+- [02-03]: Tasks display in insertion order — no sorting applied (research Open Question 3 resolved)
 
 ### Pending Todos
 
@@ -69,12 +73,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [01-03 deferred]: Runtime verification of all 9 Phase 1 requirements (SHELL-01 through SHELL-05, HKEY-01 through HKEY-04) must be done on macOS before Phase 2 begins. Dev environment is Linux (Fedora); Swift toolchain and macOS APIs unavailable.
+- [01-03 deferred]: Runtime verification of all Phase 1 and Phase 2 requirements must be done on macOS before Phase 3 begins. Dev environment is Linux (Fedora); Swift toolchain and macOS APIs unavailable.
 - [Future]: App Store vs. direct distribution decision is deferred until after v1 ships — no technical impact on current work.
 - [Resolved]: Default hotkey Cmd+Shift+Space selected — avoids Spotlight (Cmd+Space), screenshots (Cmd+Shift+3/4/5), Mission Control (Ctrl+Up).
 
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 02-02-PLAN.md (TaskInputView with auto-focus via NSWindow.didBecomeKeyNotification, TaskListView minimal list, ContentView real layout replacing placeholder).
+Stopped at: Completed 02-03-PLAN.md (TaskRowView with native macOS checkbox, strikethrough, 0.4 row opacity, delete button; TaskListView updated to render TaskRowView).
 Resume file: None
