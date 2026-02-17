@@ -14,7 +14,6 @@ let package = Package(
             dependencies: ["KeyboardShortcuts", "Defaults"],
             path: "Sources",
             resources: [
-                .copy("Info.plist"),
                 .copy("Resources"),
             ]
         ),
