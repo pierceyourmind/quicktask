@@ -1,17 +1,20 @@
 import SwiftUI
 
-/// ContentView is a placeholder for the task capture UI.
+/// ContentView is the root layout of the QuickTask floating panel.
 ///
-/// This view will be hosted inside the NSPanel created in Plan 02.
-/// In Phase 2, it will be replaced with the full task checklist UI:
-/// - Text field for quick task entry (type + Enter)
-/// - Checklist with checkboxes
-/// - Completed tasks dimmed but visible
+/// Layout: VStack with TaskInputView (text capture), a Divider, and TaskListView (task list).
+/// Fixed 400x300 frame matches the FloatingPanel size from Phase 1 — dynamic sizing is
+/// deferred to Phase 3 polish.
+///
+/// Background: .regularMaterial provides the frosted glass appearance matching Spotlight style.
 struct ContentView: View {
     var body: some View {
-        Text("QuickTask")
-            .font(.title2)
-            .foregroundColor(.secondary)
-            .frame(width: 400, height: 300)
+        VStack(spacing: 0) {
+            TaskInputView()
+            Divider()
+            TaskListView()
+        }
+        .frame(width: 400, height: 300)
+        .background(.regularMaterial)
     }
 }
