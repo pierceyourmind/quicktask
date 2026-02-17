@@ -113,7 +113,7 @@ final class PanelManager {
         // Return focus to the app that was active before the panel appeared.
         // `.activate(options: [])` is used (not `.activateIgnoringOtherApps`)
         // because we just hid our panel and the gentle activation is sufficient.
-        previousApp?.activate(options: [])
+        previousApp?.activate()
         previousApp = nil
     }
 }
