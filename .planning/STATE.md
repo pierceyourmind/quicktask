@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Zero-friction task capture — one hotkey and a few keystrokes saves a task before it vanishes
-**Current focus:** v1.1 Phase 6 — Configurable Hotkey
+**Current focus:** v1.1 Phase 7 — Bulk Clear Completed (COMPLETE)
 
 ## Current Position
 
-Phase: 6 of 7 (Configurable Hotkey)
+Phase: 7 of 7 (Bulk Clear Completed)
 Plan: 1 of 1 in current phase
-Status: Phase 6 complete
-Last activity: 2026-02-18 — Phase 6 Plan 01 (configurable-hotkey) executed
+Status: Phase 7 complete — v1.1 milestone complete
+Last activity: 2026-02-18 — Phase 7 Plan 01 (bulk-clear-completed) executed
 
-Progress: [████░░░░░░] 40% (v1.1 milestone — 3 of 4 phases complete)
+Progress: [██████████] 100% (v1.1 milestone — all 4 phases complete)
 
 ## Performance Metrics
 
@@ -25,6 +25,7 @@ Progress: [████░░░░░░] 40% (v1.1 milestone — 3 of 4 phases
 **v1.1 — Phase 4 complete (1 plan, ~10 min, 2 files).**
 **v1.1 — Phase 5 complete (1 plan, ~5 min, 3 files).**
 **v1.1 — Phase 6 complete (1 plan, ~2 min, 3 files).**
+**v1.1 — Phase 7 complete (1 plan, ~2 min, 2 files).**
 
 ## Accumulated Context
 
@@ -41,6 +42,7 @@ v1.1 decisions to make at implementation time:
 - [Phase 05-drag-to-reorder]: onMove on ForEach (not List); per-row @State isHovering in TaskRowView; .foregroundStyle(.tertiary) for drag handle; no sortOrder field — array index IS persisted order
 - [Phase 06-01]: Bump KeyboardShortcuts from exact 1.10.0 to from 2.4.0 for SwiftUI Recorder access
 - [Phase 06-01]: Use KeyboardShortcuts.reset(.togglePanel) not setShortcut(nil) for reset — restores default, not removes
+- [Phase 07-01]: confirmationDialog (not .alert) for destructive action; button absent (not disabled) when no completed tasks; safeAreaInset(edge: .bottom) not VStack wrapper; completedCount as Store computed property (not inline in View); @State showConfirmation in View (not Store)
 
 ### Pending Todos
 
@@ -62,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 06-configurable-hotkey 06-01-PLAN.md
-Resume file: .planning/phases/06-configurable-hotkey/06-01-SUMMARY.md
+Stopped at: Completed 07-bulk-clear-completed 07-01-PLAN.md
+Resume file: .planning/phases/07-bulk-clear-completed/07-01-SUMMARY.md
