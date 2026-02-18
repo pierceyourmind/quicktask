@@ -101,11 +101,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menu.addItem(quitItem)
 
-        // Pop up the menu anchored to the button. Using button.window avoids coordinate
-        // system issues — the menu appears directly below the status item.
-        guard let button = statusItem.button, let window = button.window else { return }
-        let buttonFrame = button.convert(button.bounds, to: nil)
-        menu.popUp(positioning: nil, at: NSPoint(x: buttonFrame.minX, y: buttonFrame.minY), in: window)
+        // Pop up the menu anchored to the button in button-local coordinates.
+        guard let button = statusItem.button else { return }
+        menu.popUp(positioning: nil, at: .zero, in: button)
     }
 
     /// Opens the Settings window by posting a notification to the SwiftUI hidden window bridge.
