@@ -60,23 +60,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BADGE-01 | — | Pending |
-| BADGE-02 | — | Pending |
-| REOR-01 | — | Pending |
-| REOR-02 | — | Pending |
-| REOR-03 | — | Pending |
-| HOTK-01 | — | Pending |
-| HOTK-02 | — | Pending |
-| HOTK-03 | — | Pending |
-| CLEAR-01 | — | Pending |
-| CLEAR-02 | — | Pending |
-| CLEAR-03 | — | Pending |
+| BADGE-01 | Phase 4 | Pending |
+| BADGE-02 | Phase 4 | Pending |
+| REOR-01 | Phase 5 | Pending |
+| REOR-02 | Phase 5 | Pending |
+| REOR-03 | Phase 5 | Pending |
+| HOTK-01 | Phase 6 | Pending |
+| HOTK-02 | Phase 6 | Pending |
+| HOTK-03 | Phase 6 | Pending |
+| CLEAR-01 | Phase 7 | Pending |
+| CLEAR-02 | Phase 7 | Pending |
+| CLEAR-03 | Phase 7 | Pending |
 
 **Coverage:**
-- v1.1 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 (pending roadmap)
+- v1.1 requirements: 11 total
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-18*
-*Last updated: 2026-02-18 after initial definition*
+*Last updated: 2026-02-18 — traceability filled after roadmap creation*
