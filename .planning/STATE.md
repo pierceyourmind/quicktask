@@ -67,6 +67,12 @@ Recent decisions affecting current work:
 - [02-03]: Completed tasks never filtered from list — TASK-03 requirement; only visual styling changes
 - [02-03]: .listRowSeparator(.hidden) on TaskRowView rows — row provides own structure; default separators add noise
 - [02-03]: Tasks display in insertion order — no sorting applied (research Open Question 3 resolved)
+- [03-01]: Hidden Window scene (hidden-settings-bridge) declared FIRST in App body — SwiftUI resolves scenes in declaration order; Settings scene needs this context for @Environment(\.openSettings)
+- [03-01]: NotificationCenter bridge (AppDelegate posts .openSettingsRequest; HiddenWindowView receives) — @Environment(\.openSettings) unavailable in AppKit code; notification is the only bridge
+- [03-01]: sendAction(on: [.leftMouseDown, .rightMouseDown]) instead of statusItem.menu — setting .menu overrides button.action and breaks left-click panel toggle
+- [03-01]: SMAppService.mainApp.status queried at runtime, never stored in Defaults — user can change launch-at-login in System Settings independently; stale Bool would desync UI
+- [03-01]: #if DEBUG guard on SMAppService.register/unregister — SPM executables without proper .app bundle may fail; dev builds skip and log warning; release builds call API
+- [03-01]: Defaults 9.0.0 added as SPM dependency — type-safe UserDefaults for future preference storage (launch-at-login not stored there)
 - [03-02]: ContentUnavailableView (macOS 14+ native) over hand-rolled VStack/Text empty state — HIG-compliant, automatic accessibility, proper centering
 - [03-02]: animationBehavior = .utilityWindow over manual NSAnimationContext alpha approach — simpler, native, sufficient for v1
 - [03-02]: alphaValue = 1.0 reset before show() — guards against rapid toggle leaving panel invisible when animation is interrupted mid-fade
