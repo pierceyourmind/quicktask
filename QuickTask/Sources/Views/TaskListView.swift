@@ -12,6 +12,7 @@ import SwiftUI
 struct TaskListView: View {
 
     @Environment(TaskStore.self) private var store
+    @State private var showConfirmation = false
 
     var body: some View {
         List {
@@ -32,6 +33,31 @@ struct TaskListView: View {
                     description: Text("Add a task to get started.")
                 )
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if store.completedCount > 0 {
+                HStack {
+                    Spacer()
+                    Button("Clear \(store.completedCount) completed") {
+                        showConfirmation = true
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+                    Spacer()
+                }
+                .background(.regularMaterial)
+            }
+        }
+        .confirmationDialog(
+            "Clear completed tasks?",
+            isPresented: $showConfirmation
+        ) {
+            Button("Clear \(store.completedCount) completed", role: .destructive) {
+                store.clearCompleted()
+            }
+        } message: {
+            Text("This will permanently remove all completed tasks.")
         }
     }
 }
