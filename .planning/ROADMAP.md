@@ -38,7 +38,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. The badge number updates immediately whenever a task is added, completed, or deleted — no restart required
   3. When all tasks are completed or the list is empty, the badge disappears and the icon reverts to icon-only
   4. The badge reads correctly in both light mode and dark mode without color inversion
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 04-01-PLAN.md -- Badge display and reactive observation on NSStatusItem
 
 ### Phase 5: Drag-to-Reorder
 **Goal**: Users can manually prioritize tasks by dragging them into any order, and that order survives restarts
@@ -79,7 +80,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 1. App Shell, Hotkey, and Floating Panel | v1.0 | 3/3 | Complete | 2026-02-17 |
 | 2. Task Data Model, Persistence, and Capture UI | v1.0 | 3/3 | Complete | 2026-02-17 |
 | 3. Settings, Launch at Login, and v1 Polish | v1.0 | 2/2 | Complete | 2026-02-18 |
-| 4. Task Count Badge | v1.1 | 0/? | Not started | - |
+| 4. Task Count Badge | v1.1 | 0/1 | Planned | - |
 | 5. Drag-to-Reorder | v1.1 | 0/? | Not started | - |
 | 6. Configurable Hotkey | v1.1 | 0/? | Not started | - |
 | 7. Bulk-Clear Completed | v1.1 | 0/? | Not started | - |
