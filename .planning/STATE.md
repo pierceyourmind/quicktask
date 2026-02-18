@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-18)
 ## Current Position
 
 Phase: 4 of 7 (Task Count Badge)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-02-18 — v1.1 roadmap created (phases 4-7)
+Plan: 1 of 1 in current phase
+Status: Phase 4 complete
+Last activity: 2026-02-18 — Phase 4 Plan 01 (task count badge) executed
 
-Progress: [░░░░░░░░░░] 0% (v1.1 milestone)
+Progress: [██░░░░░░░░] 20% (v1.1 milestone — 1 of 4 phases complete)
 
 ## Performance Metrics
 
@@ -22,7 +22,7 @@ Progress: [░░░░░░░░░░] 0% (v1.1 milestone)
 - Total plans completed: 8
 - Total execution time: ~2 days
 
-**v1.1 — No plans complete yet.**
+**v1.1 — Phase 4 complete (1 plan, ~10 min, 2 files).**
 
 ## Accumulated Context
 
@@ -35,6 +35,7 @@ v1.1 decisions to make at implementation time:
 - Phase 5: `moveDisabled` + `onHover` drag handle pattern required from first line — not a retrofit
 - Phase 6: Bump `KeyboardShortcuts` from pinned `1.10.0` to `from: "2.4.0"` as first commit of phase
 - Phase 7: `confirmationDialog` (not `.alert`); single `removeAll` + single `persist()` call
+- [Phase 04-task-count-badge]: variableLength NSStatusItem + button.title badge via withObservationTracking one-shot loop
 
 ### Pending Todos
 
@@ -56,5 +57,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-task-count-badge/04-CONTEXT.md
+Stopped at: Completed 04-task-count-badge 04-01-PLAN.md
+Resume file: .planning/phases/04-task-count-badge/04-01-SUMMARY.md
