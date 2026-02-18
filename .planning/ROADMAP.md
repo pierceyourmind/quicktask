@@ -73,7 +73,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. Tapping the button shows a confirmation dialog before any tasks are removed
   3. Confirming the dialog removes all completed tasks at once and the list reflects the change immediately
   4. The "Clear" button is absent when no completed tasks exist — it does not appear as a disabled control
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 07-01-PLAN.md -- Add completedCount/clearCompleted to TaskStore and conditional footer button with confirmationDialog to TaskListView
 
 ## Progress
 
