@@ -1,7 +1,7 @@
 # Stack Research
 
 **Domain:** macOS menu bar task capture app (floating panel, global hotkey, local persistence)
-**Researched:** 2026-02-17
+**Researched:** 2026-02-17 (v1.0) | Updated: 2026-02-18 (v1.1 additions)
 **Confidence:** MEDIUM-HIGH (Apple framework facts: HIGH; third-party library versions: HIGH via GitHub; architectural recommendations: MEDIUM via multiple community sources)
 
 ---
@@ -173,3 +173,249 @@ https://github.com/sindresorhus/Defaults            (Up to Next Major: 9.0.6)
 
 *Stack research for: macOS menu bar task capture app (QuickTask)*
 *Researched: 2026-02-17*
+
+---
+---
+
+# v1.1 Stack Additions
+
+**Scope:** Badge, drag-to-reorder, configurable hotkey recorder UI, bulk-clear
+**Researched:** 2026-02-18
+**Confidence:** HIGH for all four features (Apple built-in APIs verified; KeyboardShortcuts version verified on GitHub releases page)
+
+## Summary
+
+No new SPM dependencies are required. All four features use:
+- AppKit built-ins (NSImage compositing for badge)
+- SwiftUI built-ins (`.onMove`, `.moveDisabled`, `.onHover`, `.confirmationDialog`)
+- KeyboardShortcuts library already in the project (bump version constraint from `exact: "1.10.0"` to `from: "2.4.0"`)
+
+---
+
+## Required Package.swift Change
+
+The on-disk `Package.swift` pins `KeyboardShortcuts` at `exact: "1.10.0"`. The milestone targets 2.4.0. Update before implementing the recorder UI:
+
+```swift
+// Before
+.package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "1.10.0"),
+
+// After
+.package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.4.0"),
+```
+
+The `KeyboardShortcuts.Name.init(_:default:)` call in `HotkeyService.swift` and `KeyboardShortcuts.onKeyUp(for:)` in `register()` are API-stable across 1.x → 2.x. No call-site changes needed in existing files.
+
+---
+
+## Feature: Task Count Badge on NSStatusItem
+
+**API:** Pure AppKit — `NSImage.init(size:flipped:drawingHandler:)` + `NSBezierPath` + `NSAttributedString`
+**New dependency:** None
+
+The standard macOS pattern for numeric overlays on status bar icons is to composite a new `NSImage` from the base SF Symbol icon plus a colored circle and count string, then assign it to `statusItem.button?.image`.
+
+Key rules:
+- `isTemplate = true` must be `false` on the composed badge image. Template mode strips color; the red badge circle requires color rendering.
+- Use `NSStatusItem.squareLength` (22pt). Badge circle occupies top-right ~10pt of the 22pt canvas.
+- Observe `TaskStore.tasks` count changes via `@Observable` (already used in the project). Use `withObservationTracking` or add a computed property to `TaskStore` that returns `activeTasks` count and trigger badge update from there.
+- When count is 0: revert to the original template icon (no badge).
+
+```swift
+// In AppDelegate — replace/extend updateStatusItemImage():
+private func makeBadgeImage(count: Int) -> NSImage {
+    let size = NSSize(width: 22, height: 22)
+    return NSImage(size: size, flipped: false) { rect in
+        // Base SF Symbol — draw at reduced opacity so badge is readable
+        if let icon = NSImage(systemSymbolName: "checkmark.circle",
+                              accessibilityDescription: nil) {
+            icon.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 0.85)
+        }
+        // Badge circle: top-right corner, 10x10pt
+        let badgeRect = NSRect(x: 12, y: 12, width: 10, height: 10)
+        NSColor.systemRed.setFill()
+        NSBezierPath(ovalIn: badgeRect).fill()
+        // Count label
+        let label = count > 9 ? "9+" : "\(count)"
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 7, weight: .bold),
+            .foregroundColor: NSColor.white
+        ]
+        let textSize = (label as NSString).size(withAttributes: attrs)
+        let origin = NSPoint(
+            x: badgeRect.midX - textSize.width / 2,
+            y: badgeRect.midY - textSize.height / 2
+        )
+        (label as NSString).draw(at: origin, withAttributes: attrs)
+        return true
+    }
+}
+```
+
+How `AppDelegate` observes `TaskStore`: inject a reference to `TaskStore` into `AppDelegate` (same instance already passed to `PanelManager.shared.configure(with:)`). Add a method `refreshBadge()` called from `TaskStore` mutations, or use `withObservationTracking` on the main actor.
+
+---
+
+## Feature: Drag-to-Reorder with Drag Handle
+
+**API:** SwiftUI `.onMove(perform:)` + `.moveDisabled(_:)` + `.onHover(perform:)` + `Array.move(fromOffsets:toOffset:)`
+**New dependency:** None
+
+The current `TaskListView` uses `List(store.tasks) { ... }`. This must change to `List { ForEach(...) { }.onMove(...) }` because `.onMove` only attaches to `ForEach`, not the bare `List` initializer.
+
+On macOS, drag starts on mousedown (not long-press like iOS). Without confining the gesture to a drag handle, clicking the checkbox can be delayed or ambiguous. The fix: use `.moveDisabled(!isHoveringHandle)` on each row, toggled by an `.onHover` modifier on the drag handle icon.
+
+`isHoveringHandle` is transient UI state — it lives in `TaskRowView`, NOT in the `Task` model.
+
+```swift
+// TaskListView.swift — replace List body
+List {
+    ForEach(store.tasks) { task in
+        TaskRowView(task: task)
+            .listRowSeparator(.hidden)
+    }
+    .onMove { indices, newOffset in
+        store.move(fromOffsets: indices, toOffset: newOffset)
+    }
+}
+.listStyle(.plain)
+
+// TaskRowView.swift — add drag handle
+@State private var isHoveringHandle = false
+
+var body: some View {
+    HStack {
+        Image(systemName: "line.3.horizontal")
+            .foregroundColor(.secondary)
+            .onHover { isHoveringHandle = $0 }
+        // ... existing checkbox Toggle and delete button ...
+    }
+    .moveDisabled(!isHoveringHandle)
+}
+```
+
+`TaskStore` needs a new `move(fromOffsets:toOffset:)` method:
+
+```swift
+func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+    tasks.move(fromOffsets: source, toOffset: destination)
+    persist()
+}
+```
+
+---
+
+## Feature: Configurable Hotkey Recorder UI
+
+**API:** `KeyboardShortcuts.Recorder` (SwiftUI view) — bundled with KeyboardShortcuts 2.4.0
+**New dependency:** None (version bump only, see Package.swift section above)
+
+`KeyboardShortcuts.Recorder` is a ready-made SwiftUI view that renders a native-style recorder control. Drop it directly into `SettingsView`'s existing `Form`. It handles:
+- Displaying the current shortcut
+- Recording a new one when clicked
+- Detecting conflicts with system shortcuts and app shortcuts
+- Persisting to `UserDefaults` automatically
+
+```swift
+// SettingsView.swift — add to Form
+import KeyboardShortcuts
+
+Section {
+    KeyboardShortcuts.Recorder("Toggle panel:", name: .togglePanel)
+} header: {
+    Text("Hotkey")
+}
+```
+
+The `KeyboardShortcuts.Name.togglePanel` is already defined in `HotkeyService.swift`. No additional setup needed.
+
+SettingsView frame will need a height increase (currently 150pt) to accommodate the new section — approximately 220pt.
+
+---
+
+## Feature: Bulk-Clear Button with Confirmation
+
+**API:** SwiftUI `.confirmationDialog(_, isPresented:, titleVisibility:)` + `Button(role: .destructive)`
+**New dependency:** None
+
+`.confirmationDialog` is the HIG-correct pattern for irreversible batch operations on macOS (available macOS 12+, confirmed on the macOS 14+ target). It automatically adds a Cancel button and applies `.destructive` styling to danger actions.
+
+Placement: A "Clear Completed" button in a toolbar or footer of `ContentView`/`TaskListView`. Disable it when there are no completed tasks.
+
+```swift
+// In ContentView or TaskListView
+@State private var showClearConfirmation = false
+
+// Button placement — footer or toolbar
+Button("Clear Completed") {
+    showClearConfirmation = true
+}
+.disabled(store.tasks.filter(\.isCompleted).isEmpty)
+.confirmationDialog(
+    "Remove all completed tasks?",
+    isPresented: $showClearConfirmation,
+    titleVisibility: .visible
+) {
+    Button("Remove Completed", role: .destructive) {
+        store.clearCompleted()
+    }
+}
+```
+
+`TaskStore` needs a new `clearCompleted()` method:
+
+```swift
+func clearCompleted() {
+    tasks.removeAll(where: \.isCompleted)
+    persist()
+}
+```
+
+---
+
+## v1.1 What NOT to Add
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Third-party badge library (BadgeHub, swift-badge) | These target UIKit/iOS. No maintained macOS NSStatusItem badge library exists. AppKit NSImage compositing is ~20 lines. | Pure AppKit `NSImage` drawing |
+| `NSStatusItem.button?.title` for badge | Replaces the SF Symbol icon with plain text. Cannot combine icon + count as a title string. | Composite `NSImage` (icon + badge circle + count) set as `button.image` |
+| `NSStatusItem.view` (custom NSView) for badge | Deprecated macOS 10.14+. Apple docs warn against using it. Loses Retina handling and dark mode tinting. | `button.image` with composed NSImage |
+| `image.isTemplate = true` on the badge image | Template rendering strips color. The red badge circle becomes invisible in template mode. | Set `isTemplate = false` on the composed badge image |
+| `List(store.tasks) { }.onMove(...)` | `.onMove` on bare `List` initializer does not work — confirmed macOS behavior. Only `ForEach` inside `List` supports `.onMove`. | `List { ForEach(...) { }.onMove(...) }` |
+| Full-row drag (no handle, no `.moveDisabled`) | On macOS, any mousedown on the row can trigger drag, blocking checkbox clicks and causing interaction ambiguity. | `.moveDisabled(!isHoveringHandle)` + `.onHover` on handle icon |
+| `NSTableView` for drag reorder | Requires dropping out of SwiftUI entirely. The `.onHover` handle pattern solves the macOS drag-vs-click problem cleanly within SwiftUI. | SwiftUI `.onMove` + `.moveDisabled` + `.onHover` |
+| `.alert` for bulk-clear confirmation | `.alert` supports destructive buttons but `.confirmationDialog` is the HIG-correct pattern for multi-action destructive operations on macOS. | `.confirmationDialog` |
+| Undo manager for bulk-clear | `UndoManager` integration is disproportionate in scope for this milestone. Confirmation dialog is the right safeguard. | `.confirmationDialog` |
+| `KeyboardShortcuts` v1.10.0 with Recorder UI | `exact: "1.10.0"` pin will block SPM from resolving 2.4.0. Both `Recorder` and `RecorderCocoa` exist in 1.x too, but 2.x adds macOS 15 Option-key fixes and `isEnabled()`/`removeHandler()` — use 2.4.0. | `from: "2.4.0"` in Package.swift |
+
+---
+
+## v1.1 Version Compatibility
+
+| Technology | Version | Confidence | Notes |
+|------------|---------|------------|-------|
+| KeyboardShortcuts 2.4.0 | macOS 14+ target | HIGH | Verified on GitHub releases page: https://github.com/sindresorhus/KeyboardShortcuts/releases |
+| `KeyboardShortcuts.Recorder` SwiftUI view | KeyboardShortcuts 2.4.0 | HIGH | Verified in source: `Sources/KeyboardShortcuts/Recorder.swift` |
+| SwiftUI `.onMove` on `ForEach` | macOS 14+ | HIGH | Available since macOS 11. Confirmed macOS drag behavior (no long-press). |
+| SwiftUI `.moveDisabled` | macOS 14+ | HIGH | Available since macOS 12. |
+| SwiftUI `.onHover` | macOS 14+ | HIGH | macOS-only API, available since macOS 11. |
+| SwiftUI `.confirmationDialog` | macOS 12+, targeting macOS 14+ | HIGH | Apple docs confirm macOS 12+ availability. |
+| `NSImage.init(size:flipped:drawingHandler:)` | macOS 14+ | HIGH | AppKit API available since macOS 10.8. |
+| `Array.move(fromOffsets:toOffset:)` | Swift 5.10 | HIGH | Standard library method, no version concern. |
+
+---
+
+## v1.1 Sources
+
+- https://github.com/sindresorhus/KeyboardShortcuts/releases — 2.4.0 confirmed as current stable release (Sep 18, 2024)
+- https://github.com/sindresorhus/KeyboardShortcuts/blob/main/Sources/KeyboardShortcuts/Recorder.swift — `Recorder` initializer signatures confirmed; `LabeledContent` Form integration confirmed
+- https://github.com/sindresorhus/KeyboardShortcuts/blob/main/readme.md — `KeyboardShortcuts.Recorder("Toggle Unicorn Mode:", name:)` usage pattern in Form confirmed
+- https://nilcoalescing.com/blog/ListReorderingWhileStillBeingAbleToEditTheListItems/ — `.moveDisabled` + `.onHover` drag handle pattern; macOS-specific interaction fix — MEDIUM confidence (independent blog, verified against Apple API docs)
+- https://swiftdevjournal.com/moving-list-items-using-drag-and-drop-in-swiftui-mac-apps/ — `.onMove` requires `ForEach` inside `List` on macOS confirmed — MEDIUM confidence
+- https://developer.apple.com/documentation/appkit/nsstatusitem — `button.image` API, deprecation of `.view` — HIGH confidence
+- https://developer.apple.com/documentation/swiftui/view/confirmationdialog(_:ispresented:titlevisiblity:actions:) — macOS 12+ availability confirmed — HIGH confidence
+
+---
+
+*v1.1 stack additions for: QuickTask badge, drag-reorder, configurable hotkey, bulk-clear*
+*Researched: 2026-02-18*

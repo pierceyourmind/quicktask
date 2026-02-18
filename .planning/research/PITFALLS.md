@@ -1,141 +1,343 @@
 # Pitfalls Research
 
-**Domain:** macOS menu bar task/checklist app (global hotkey + floating panel + local persistence)
-**Researched:** 2026-02-17
-**Confidence:** MEDIUM-HIGH (most claims verified against official docs or multiple sources; macOS-specific quirks confirmed by Apple Developer Forums and practitioner blogs)
+**Domain:** macOS menu bar task/checklist app — v1.1 milestone (badge, drag-reorder, configurable hotkey, bulk-clear)
+**Researched:** 2026-02-18
+**Confidence:** MEDIUM-HIGH (claims cross-referenced against official Apple docs, Apple Developer Forums feedback reports, and practitioner blogs; macOS-specific SwiftUI behavior verified with multiple sources)
+
+---
+
+## Scope Note
+
+This file covers pitfalls for **adding four specific v1.1 features to the existing QuickTask codebase**:
+1. Task count badge on `NSStatusItem`
+2. Drag-to-reorder in SwiftUI `List` inside `NSPanel`
+3. Configurable hotkey recorder (`KeyboardShortcuts.Recorder`) in the Settings window
+4. Bulk-clear that modifies the `@Observable TaskStore` array
+
+The existing system is: AppKit `NSStatusItem` + `NSPanel` (.nonactivatingPanel) + SwiftUI content + `@Observable TaskStore` + JSON persistence. v1 pitfalls (NSPanel subclassing, hotkey permission model, etc.) are documented in prior research and are assumed solved.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: SwiftUI `.keyboardShortcut()` Does Not Fire When App Is in Background
+### Pitfall 1: Badge Composite Image Breaks `isTemplate` — Dark Mode Inversion
 
 **What goes wrong:**
-Developers reach for SwiftUI's built-in `.keyboardShortcut()` modifier to register the global hotkey. It compiles and works in tests — but only while the app window is key. The moment the user switches to another app, the hotkey stops firing entirely. The app appears to work during development because Xcode keeps it focused.
+The existing `NSStatusItem` button uses `image.isTemplate = true`, which is correct for the plain checkmark icon — the system handles light/dark mode automatically. When a badge (colored red circle with a white number) is composited onto the image to create a badge count display, the badge color inverts in dark mode. A red badge in light mode becomes a dark smear or disappears entirely in dark mode because the template rendering pipeline applies tinting to the entire image.
 
 **Why it happens:**
-`.keyboardShortcut()` is scoped to the active SwiftUI window's responder chain. It is not a global system-wide event tap. There is no warning or error — it silently does nothing in the background.
+Template images are processed by macOS to render as a single-color silhouette (using only the alpha channel). Any color information in the composited badge is discarded. The compositing must happen *after* template processing, but the NSStatusItem button's `image` property applies template rendering before display — so pre-compositing the badge into the image loses all color fidelity.
 
 **How to avoid:**
-Use `KeyboardShortcuts` (sindresorhus/KeyboardShortcuts) or `HotKey` (soffes/HotKey) — both use Carbon's `RegisterEventHotKey` or `CGEventTap` under the hood and fire regardless of which app is active. `KeyboardShortcuts` is preferred for QuickTask because it supports user-remappable shortcuts and is Mac App Store sandbox-compatible. Never use `.keyboardShortcut()` for the capture trigger.
+Two viable approaches:
+
+Option A (recommended): Use `button.title` alongside `button.image` to display the count as text. Set `button.imagePosition = .imageLeft` and configure the title with an `NSAttributedString` for font sizing. The text renders as a standard menu bar text element and handles dark/light mode correctly. This avoids image compositing entirely.
+
+Option B: Switch from `squareLength` to `variableLength` for the `NSStatusItem`, build a composite `NSImage` using `NSImage.init(size:flipped:drawingHandler:)` where you draw the SF Symbol *without* `isTemplate = true` and then draw the badge circle on top. Set `image.isTemplate = false` on the composite. Manually handle dark mode by reading `NSApplication.shared.effectiveAppearance` and choosing badge colors accordingly. This is more complex and must be re-drawn when the system appearance changes (observe `NSNotification.Name.NSWorkspaceAccessibilityDisplayOptionsDidChange` or `effectiveAppearanceDidChange`).
 
 **Warning signs:**
-- Hotkey works during development/testing but users report it "doesn't work"
-- Hotkey only fires if you click the menu bar icon first
-- Testing was done exclusively while the Xcode console was open (app retained focus)
+- Badge looks correct in light mode but vanishes or turns black in dark mode
+- Badge renders correctly in Xcode preview but breaks on a real device
+- Badge appears to flicker when switching between light and dark modes
 
 **Phase to address:**
-Phase 1 (Core hotkey + panel scaffold) — get this right on day one; retrofitting after UI is built is painful.
+Badge phase (v1.1 Phase 1) — choose the approach before writing any badge code; retrofitting the approach after implementing the image pipeline is a full rewrite of the badge logic.
 
 ---
 
-### Pitfall 2: Activation Policy Causes Window to Open Behind Other Apps
+### Pitfall 2: `NSStatusItem` Width Mismatch — `squareLength` Clips Badge Text
 
 **What goes wrong:**
-The floating panel appears in the background, underneath the browser or other active application. The user presses the hotkey, hears no sound and sees nothing, because the panel opened but is not visible.
+The existing `NSStatusItem` is initialized with `NSStatusItem.squareLength`, which fixes the item to a square (approximately 22x22 points). Adding a text label or compositing a larger badge image causes the content to be clipped — the badge number is not visible, or the item overflows into neighboring icons.
 
 **Why it happens:**
-Menu bar apps run with `NSApplication.ActivationPolicy.accessory`. In this mode, macOS does not bring windows to the front reliably. `makeKeyAndOrderFront(nil)` is insufficient — the OS requires the app to be "active" (i.e. have a Dock icon at that moment) before it will honor bring-to-front requests.
+`squareLength` creates a fixed-dimension item. It was appropriate for a single SF Symbol icon. A badge requires additional horizontal space. The length is set at initialization time; changing it later is possible via `statusItem.length = NSStatusItem.variableLength` but can cause a visible layout jump if done while the menu bar is visible.
 
 **How to avoid:**
-Before showing the panel, call `NSApp.activate(ignoringOtherApps: true)`. For the Spotlight-like UX (panel appears without stealing the whole app focus permanently), use an `NSPanel` subclass with `.nonactivatingPanel` style mask combined with `canBecomeKey` returning `true`. This lets the panel receive keyboard input without making your app the main/active application. After dismissal, call `NSApp.deactivate()` or override `resignKey()` to return control to the previously-active app.
+If using `button.title` for the badge count (Option A from Pitfall 1), change `NSStatusItem.squareLength` to `NSStatusItem.variableLength` in `AppDelegate.setupStatusItem()`. Then set `button.imagePosition = .imageLeft` and `button.title` to the count string. `variableLength` lets macOS size the item to fit. When the task count is zero, set `button.title = ""` so the item collapses back to icon-only width. The transition is seamless.
+
+If keeping a composite image (Option B), pre-size the composite `NSImage` to include the badge area, and ensure the image's intrinsic size matches its intended display size by setting `image.size` explicitly.
 
 **Warning signs:**
-- Panel opens but requires clicking it before it responds to typing
-- App icon briefly flashes in the Dock when hotkey is pressed
-- Works fine from the menu bar click but not from the hotkey
+- Badge number is partially clipped on the right edge
+- Menu bar icon width jumps when tasks are added or removed
+- `button.title` is set but the item stays the same width as before
 
 **Phase to address:**
-Phase 1 (Core hotkey + panel scaffold) — window level and activation policy are foundational; patch after the fact causes cascading UX regressions.
+Badge phase (v1.1 Phase 1) — the length must be chosen alongside the badge rendering strategy.
 
 ---
 
-### Pitfall 3: NSPanel Subclassing Required — SwiftUI Has No First-Class Floating Panel
+### Pitfall 3: Badge Not Updated on Main Thread — AppKit Threading Violation
 
 **What goes wrong:**
-Developer uses a standard SwiftUI `Window` scene for the floating panel. The window: (a) does not float above other apps properly, (b) appears in the Dock's window list and Mission Control, (c) cannot be dismissed by clicking outside, (d) does not handle `.nonactivatingPanel` behavior.
+The `TaskStore.tasks` array changes drive the badge update. If a store mutation fires from a background context (e.g., future async persistence refactor, or a Task that isn't dispatched to `@MainActor`), updating `statusItem.button?.title` or `statusItem.button?.image` from a non-main thread causes a runtime warning (`UIKit was called from a background thread`) or silent corruption. The badge shows stale data or the app logs thread-checker warnings.
 
 **Why it happens:**
-SwiftUI's `Window` and `WindowGroup` wrap `NSWindow`, not `NSPanel`. There is no SwiftUI-native equivalent to `NSPanel`. The `.windowLevel(.floating)` modifier was added in macOS 15 but does not grant the full panel behavior (non-activating, floating, hides with app).
+All `NSStatusItem.button` property mutations are AppKit calls and must occur on the main thread. The `@Observable` framework itself is thread-safe for observation tracking, but UI writes are not. The current codebase always mutates on the main thread (all mutations are synchronous), but future refactors adding `Task { }` or `async` without explicit `@MainActor` annotations can silently break this.
 
 **How to avoid:**
-Subclass `NSPanel` and host the SwiftUI view via `NSHostingView`. Required style mask flags: `[.titled, .nonactivatingPanel, .fullSizeContentView]`. Override `canBecomeKey` to return `true` (so text fields work) and `canBecomeMain` to return `false` (so it doesn't steal main window status). Use `isFloatingPanel = true` and `level = .floating`. Wire up `resignKey()` to auto-dismiss when the user clicks elsewhere.
+Add `@MainActor` annotation to the badge update method. Since `AppDelegate` already runs on the main actor by convention (it is an `NSApplicationDelegate`), the badge update function is safe as long as it's called from store observation code that is also main-actor-bound. When observing `TaskStore.tasks` to drive the badge, use `withObservationTracking` on the main actor, or drive updates from a SwiftUI-layer publisher. Example pattern:
+
+```swift
+// In AppDelegate or a dedicated BadgeController, call this on task count change:
+@MainActor
+func updateBadge(count: Int) {
+    guard let button = statusItem.button else { return }
+    button.title = count > 0 ? "\(count)" : ""
+}
+```
 
 **Warning signs:**
-- Panel appears in Mission Control / Spaces
-- Panel does not dismiss when user clicks outside it
-- Panel appears at normal window level behind other floating apps (e.g. 1Password, Raycast)
-- Text fields inside the panel don't accept keyboard input
+- Xcode thread sanitizer (TSan) reports data races in `NSStatusItem`
+- Badge count lags by one update behind actual task count
+- Console prints "must be used from main thread only" warnings
 
 **Phase to address:**
-Phase 1 (Core hotkey + panel scaffold) — cannot be bolted on; requires the NSPanel subclass from the start.
+Badge phase (v1.1 Phase 1) — enforce from the first line of badge code; do not add `@MainActor` as a remediation after races are observed.
 
 ---
 
-### Pitfall 4: `SettingsLink` and `openSettings()` Silently Fail in MenuBarExtra Context
+### Pitfall 4: `onMove` Drag Gesture Conflicts with `TextField` Tap-to-Focus in `NSPanel`
 
 **What goes wrong:**
-The settings window never opens when called from the menu bar item. No error is thrown. The user clicks "Preferences..." and nothing happens.
+Adding `.onMove()` to the SwiftUI `List` makes every row draggable, which SwiftUI implements by attaching a drag gesture recognizer to each row. This gesture recognizer intercepts taps, introducing a significant delay before a tapped `TextField` (or interactive element) receives focus. Users must tap and hold for ~0.5 seconds before the text cursor appears. On macOS inside an `NSPanel`, this delay is more noticeable because the panel already has a custom activation model.
 
 **Why it happens:**
-`SettingsLink` and the `openSettings` action assume a SwiftUI window environment that menu bar apps do not have. Apple's documentation does not mention this restriction. The SwiftUI environment lacks the proper initialization for settings scenes when the app uses `.accessory` activation policy without any regular windows.
+SwiftUI's `onMove` implementation uses a unified drag recognizer that must distinguish between a tap (intent: focus a field) and a drag (intent: reorder). The recognizer adds a delay before forwarding the tap to the underlying control. There is no SwiftUI API to restrict the drag recognizer to a sub-region of the row.
+
+The existing `TaskRowView` contains a `Toggle` (checkbox) and a task title label — not currently a `TextField`. However, if `TaskRowView` gains any interactive control (e.g., inline rename), this delay becomes immediately user-visible.
 
 **How to avoid:**
-Declare a hidden zero-size `Window` scene in the `App` body before the `Settings` scene — this provides the SwiftUI environment context required. The hidden window must be declared first; ordering matters on macOS Sequoia. To open settings, temporarily switch to `.regular` activation policy, show the settings window, then switch back to `.accessory`. This requires a 100-200ms `DispatchQueue.main.asyncAfter` delay for the policy switch to take effect before calling `openSettings`. Plan ~50 lines of boilerplate for what Apple implies should be a one-liner.
+Do not apply `.onMove()` globally to all rows. Instead, use the conditional `moveDisabled()` + hover-triggered drag handle pattern:
+
+```swift
+ForEach($store.tasks) { $task in
+    TaskRowView(task: task)
+        .overlay(alignment: .trailing) {
+            if isHovering(task.id) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .onHover { hovering in
+            hoveredID = hovering ? task.id : nil
+        }
+        .moveDisabled(!isHovering(task.id))
+}
+.onMove { from, to in store.move(from: from, to: to) }
+```
+
+Only rows where the user is hovering over the drag handle region are movable. This prevents the drag gesture from delaying taps elsewhere.
 
 **Warning signs:**
-- "Preferences..." menu item does nothing on click
-- Settings window opens once then never again
-- Works in Simulator but not on device or after archiving
+- Clicking a checkbox or interactive element requires a visible pause before it responds
+- Users report "sluggish" click response after reorder is added
+- The drag handle appears but tapping anywhere on the row triggers the delay
 
 **Phase to address:**
-Phase 2 (Settings/preferences UI) — do not discover this during polish; the hidden window workaround must be planned into the architecture.
+Drag-reorder phase (v1.1 Phase 2) — use the drag handle pattern from the first implementation; do not ship the naive `.onMove()` and expect to add handles later.
 
 ---
 
-### Pitfall 5: `NSStatusItem` Disappears if Not Strongly Retained
+### Pitfall 5: `.onMove` Crashes if the `List` Can Receive Cross-List Drops
 
 **What goes wrong:**
-The app launches, the menu bar icon appears, then vanishes seconds later (or never appears at all in subsequent test runs). This is more confusing than a crash because everything else seems to work.
+With `.onMove()` active, if any drag source external to the list (system file drag, another list, even a drag from the dock in some configurations) drops onto the `TaskListView`, the app crashes with: `Fatal error: Attempting to insert row (destination: X) with no associated insert action`.
 
 **Why it happens:**
-`NSStatusItem` is reference-counted like any Swift object. If the status item is assigned to a local variable or a weak property, ARC deallocates it, and macOS removes it from the status bar with no warning.
+SwiftUI's `.onMove()` implicitly enables `onDrop` for the list. When a drop it cannot handle arrives, SwiftUI tries to forward it to `.onInsert`. If no `.onInsert` handler exists, it crashes rather than silently rejecting the drop. This is a long-standing SwiftUI bug (reported 2021, still reproducible in 2024 per community reports).
+
+The `NSPanel` environment is particularly susceptible because the panel floats above other apps, and users may accidentally drag files or text from other windows onto the panel.
 
 **How to avoid:**
-Store the `NSStatusItem` as a `strong` property on the `AppDelegate` or an `@Observable` object that lives for the application's lifetime. Never create it inside a function without assigning it to a long-lived owner. Verify by running under Instruments → Allocations after launch.
+Add an empty `.onInsert` handler to the `ForEach` immediately whenever `.onMove()` is added:
+
+```swift
+ForEach(store.tasks) { task in
+    TaskRowView(task: task)
+}
+.onMove { from, to in store.move(from: from, to: to) }
+.onInsert(of: ["com.apple.SwiftUI.listReorder"]) { _, _ in
+    // Intentionally empty — prevents crash on foreign drops
+}
+```
+
+This provides a no-op handler that SwiftUI forwards to instead of crashing.
 
 **Warning signs:**
-- Menu bar icon flashes briefly then disappears
-- Icon appears in debug builds but not release
-- Icon disappears after returning from sleep
+- App crashes when dragging a file or text from another app onto the panel
+- Crash only occurs when there are two or more items in the list
+- Works fine in isolation but crashes when other drag sources are nearby
 
 **Phase to address:**
-Phase 1 (Core hotkey + panel scaffold) — day-one issue, easy to prevent, damaging to debug late.
+Drag-reorder phase (v1.1 Phase 2) — add the `.onInsert` guard at the same time as `.onMove`; never ship one without the other.
 
 ---
 
-### Pitfall 6: Global Hotkey Sandbox + Permission Model Misunderstood
+### Pitfall 6: `TaskStore.move()` Must Use `Array.move(fromOffsets:toOffset:)` — Not Manual Index Arithmetic
 
 **What goes wrong:**
-App is submitted to the Mac App Store and rejected because it requests Accessibility permission, which App Store reviewers cannot grant (the app doesn't appear in System Settings → Accessibility after installation). Or the permission prompt never fires in a sandboxed app.
+A developer implementing `TaskStore.move()` manually swaps elements using index arithmetic (e.g., `tasks.swapAt(from, to)` or a remove-then-insert). SwiftUI's `onMove` callback provides an `IndexSet` (source indices) and `Int` (destination), which does not directly map to a single swap operation. Manual arithmetic produces wrong results for multi-element moves and off-by-one errors at the array boundaries. The task order appears to jump unpredictably.
 
 **Why it happens:**
-There are two separate permission systems for keyboard monitoring:
-- **Accessibility** (`AXIsProcessTrusted`) — required for `NSEvent.addGlobalMonitorForEvents`. This permission is not reliably grantable in sandboxed/App Store apps.
-- **Input Monitoring** (`CGPreflightListenEventAccess`) — required for `CGEventTap` with `listenOnly` option. This IS available to sandboxed apps including App Store apps.
-
-Developers use the wrong API (`NSEvent.addGlobalMonitorForEvents` with `defaultTap`) and hit the Accessibility permission wall.
+The `destination` integer in `onMove` uses the "target slot" convention (insert *before* this index after removals), which is not the same as the final index after mutation. Swift's standard library `Array.move(fromOffsets:toOffset:)` handles this correctly. It is easy to miss this method and write manual index logic.
 
 **How to avoid:**
-Use `CGEventTap` with `CGEventTapOptions.listenOnly` — this triggers Input Monitoring permission, not Accessibility. Input Monitoring is sandbox-compatible and App Store-compatible. If distributing outside the App Store, Accessibility is fine but requires clear onboarding explaining why the permission is needed. The `KeyboardShortcuts` library handles this correctly internally.
+Use `Array.move(fromOffsets:toOffset:)` directly:
+
+```swift
+func move(from source: IndexSet, to destination: Int) {
+    tasks.move(fromOffsets: source, toOffset: destination)
+    persist()
+}
+```
+
+This is a one-liner and is the canonical implementation. Do not rewrite it.
 
 **Warning signs:**
-- Permission prompt appears for Accessibility but not Input Monitoring (wrong API path)
-- Sandbox builds work; archive/TestFlight builds fail silently
-- App not listed under System Settings → Accessibility after install
+- Moving a task to the bottom of the list places it second-to-last instead
+- Moving multiple selected tasks at once produces wrong order
+- Moving a task to position 0 crashes with an index out of bounds
 
 **Phase to address:**
-Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; wrong choice here breaks App Store distribution permanently without a full rewrite.
+Drag-reorder phase (v1.1 Phase 2) — use `Array.move(fromOffsets:toOffset:)` from day one; do not write custom index arithmetic.
+
+---
+
+### Pitfall 7: `KeyboardShortcuts.Recorder` Does Not Respond in the `NSWindow`-Hosted Settings View
+
+**What goes wrong:**
+The `SettingsView` is hosted in a manually-created `NSWindow` via `NSHostingView` (not a SwiftUI `Settings` scene — the existing code does this correctly to work around `SettingsLink` failures). When `KeyboardShortcuts.Recorder` is placed inside this hosted view, clicking the recorder to start recording a new shortcut does nothing. The recorder appears but ignores mouse and keyboard input.
+
+**Why it happens:**
+`KeyboardShortcuts.Recorder` uses `NSViewRepresentable` wrapping `RecorderCocoa` (an `NSControl` subclass). For the recorder to receive input, its parent `NSWindow` must be key. The settings `NSWindow` is shown with `.regular` activation policy and `makeKeyAndOrderFront(nil)`, which should make it key. However, the `NSPanel` floating panel (`canBecomeKey = true`) can intercept key window status if it is visible when the settings window opens. The panel's `resignKey()` implementation immediately calls `PanelManager.shared.hide()`, but if the panel is hidden *after* the settings window becomes key, a timing race can leave the settings window in a non-key state.
+
+**How to avoid:**
+In `AppDelegate.openSettingsFromMenu()`, ensure the floating panel is explicitly hidden *before* the settings window is made key:
+
+```swift
+@objc private func openSettingsFromMenu() {
+    PanelManager.shared.hide()          // Dismiss panel first
+    // ... existing window creation / reuse code ...
+    window.makeKeyAndOrderFront(nil)
+    NSApp.activate(ignoringOtherApps: true)
+}
+```
+
+This eliminates the race. The panel's `resignKey()` still fires but operates on an already-hidden panel (idempotent). The settings window then becomes key without competition.
+
+Additionally: `KeyboardShortcuts.Recorder` does not support `.frame(width:height:)` resizing via SwiftUI modifiers (confirmed open GitHub issue #133). Do not attempt to resize it; design the settings form layout around its fixed intrinsic size (approximately 130pt wide).
+
+**Warning signs:**
+- Recorder field is visible but clicking it has no effect
+- Recorder works after manually hiding the panel then opening Settings
+- Recorder works when opened from a fresh launch but not after using the panel hotkey first
+
+**Phase to address:**
+Configurable hotkey phase (v1.1 Phase 3) — add the explicit `PanelManager.shared.hide()` call in the settings open handler before embedding the recorder; do not discover the race during testing.
+
+---
+
+### Pitfall 8: `KeyboardShortcuts.Recorder` Captures the Panel Toggle Hotkey as a New Shortcut
+
+**What goes wrong:**
+When the user opens the Settings window and clicks the recorder to start recording, then presses the current panel toggle hotkey (e.g., Ctrl+Option+Space), two things happen simultaneously: (1) the recorder captures the shortcut as the new value, and (2) `HotkeyService` fires and toggles the panel. The panel opens on top of the Settings window, the recorder receives no `keyUp` event because the panel is now key, and the shortcut is recorded as an empty or partial value.
+
+**Why it happens:**
+`KeyboardShortcuts.Recorder` begins listening for a key event when clicked. `HotkeyService` uses a global `CGEventTap` (via the `KeyboardShortcuts` library) that fires *regardless* of which window is key. Both handlers receive the same key event. The recorder's capture phase does not suppress global hotkey listeners.
+
+**How to avoid:**
+Temporarily pause the global hotkey registration while the recorder is active. `KeyboardShortcuts` provides `KeyboardShortcuts.disable(.togglePanel)` / `KeyboardShortcuts.enable(.togglePanel)` for exactly this purpose. Call `disable` when the recorder becomes active (use the `onChange` of the recorder's binding to detect recording state) and `enable` when it becomes inactive:
+
+```swift
+KeyboardShortcuts.Recorder("Toggle Panel", name: .togglePanel)
+    .onChange(of: isRecording) { recording in
+        if recording {
+            KeyboardShortcuts.disable(.togglePanel)
+        } else {
+            KeyboardShortcuts.enable(.togglePanel)
+        }
+    }
+```
+
+Note: the `KeyboardShortcuts.Recorder` SwiftUI component does not natively expose an `isRecording` binding. Use `RecorderCocoa` directly via `NSViewRepresentable` if you need to observe recording state, or check the library's current API for `onRecordingChange` callbacks.
+
+**Warning signs:**
+- Pressing the existing hotkey while the recorder is focused triggers the panel instead of recording the shortcut
+- Shortcut is recorded as empty after pressing the existing combination
+- Settings window loses key status unexpectedly when recording
+
+**Phase to address:**
+Configurable hotkey phase (v1.1 Phase 3) — design the disable/enable flow as part of the recorder integration; do not discover the conflict during QA.
+
+---
+
+### Pitfall 9: Bulk-Clear Does Not Animate Row Removal — List Jumps
+
+**What goes wrong:**
+Calling `store.clearCompleted()` (which calls `tasks.removeAll { $0.isCompleted }`) removes all completed tasks at once. SwiftUI's `List` re-renders the full row set with no transition — completed rows disappear instantly. This looks like a bug and is visually jarring, especially with 5+ completed tasks.
+
+**Why it happens:**
+`@Observable` property changes trigger view updates synchronously. When `tasks` is mutated with `removeAll`, SwiftUI sees the new array all at once and does a full diff with no time to run per-row exit animations. `withAnimation { }` wrapping the mutation does *not* reliably trigger per-row animations for `List` items on macOS — this is a known SwiftUI/macOS `List` animation limitation documented in Apple Developer Forums.
+
+**How to avoid:**
+Use a two-step animated removal: first mark completed tasks as "pending removal" with a local state flag, animate them out (opacity to 0), then remove them from the store after the animation completes. Alternatively, wrap the mutation in `withAnimation(.default) { }` and explicitly set a `transition` on the rows — some macOS versions do respect `.transition(.opacity)` on List rows when wrapped in `withAnimation`.
+
+The pragmatic path for v1.1: wrap in `withAnimation` and test on-device. If animation is correct, ship it. If it jumps, add the two-step approach. Do not over-engineer until the behavior is observed on a real macOS build.
+
+Minimum viable implementation:
+```swift
+Button("Clear Completed") {
+    withAnimation {
+        store.clearCompleted()
+    }
+}
+```
+
+**Warning signs:**
+- List rows vanish instantaneously without any fade when "Clear Completed" is tapped
+- `withAnimation` has no visible effect on the removal
+- The empty state (`ContentUnavailableView`) appears without a crossfade
+
+**Phase to address:**
+Bulk-clear phase (v1.1 Phase 4) — test animation on macOS before shipping; if `withAnimation` is insufficient, add the two-step removal.
+
+---
+
+### Pitfall 10: Bulk-Clear Without Confirmation Destroys Unfocused Completed Tasks
+
+**What goes wrong:**
+A "Clear Completed" button without a confirmation dialog is a destructive one-tap action. Users who have completed tasks they want to review before clearing (or who tapped the button accidentally) have no recourse. The action immediately modifies the JSON-persisted store with no undo.
+
+**Why it happens:**
+Single-action bulk deletes feel fast to implement and seem "clean" in a minimal app. The destructive consequence is not obvious until a user accidentally clears 15 tasks they had mentally queued for reference.
+
+**How to avoid:**
+Gate bulk-clear behind a `confirmationDialog` (SwiftUI native, macOS 12+):
+
+```swift
+.confirmationDialog(
+    "Clear all completed tasks?",
+    isPresented: $showingClearConfirmation,
+    titleVisibility: .visible
+) {
+    Button("Clear \(completedCount) Completed", role: .destructive) {
+        withAnimation { store.clearCompleted() }
+    }
+    Button("Cancel", role: .cancel) { }
+}
+```
+
+This is one modal interaction with standard system styling and is the expected macOS pattern for destructive bulk actions.
+
+**Warning signs:**
+- "Clear Completed" button immediately clears tasks with no dialog
+- No visual indication of how many tasks will be deleted
+- No undo possible after clear
+
+**Phase to address:**
+Bulk-clear phase (v1.1 Phase 4) — include confirmation from the first implementation; do not add it as a polish step after feedback.
 
 ---
 
@@ -143,11 +345,11 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `UserDefaults` for task list storage | Zero setup, works immediately | 4MB limit, not designed for structured lists, no atomic writes, data loss risk if plist corrupts | Never for the task list; use for preferences only |
-| Skipping `NSPanel` subclass, using `Window` scene instead | Faster initial scaffold | Floating behavior, focus management, and dismissal all require reimplementing later | Never — the subclass is 50 lines and saves days of debugging |
-| Hardcoded hotkey (e.g. always Cmd+Space-clone) | Simpler implementation | Conflicts with Spotlight; users with different setups will be blocked | Never — always use `KeyboardShortcuts` from day one for user-remappability |
-| Storing file in `~/Documents` | Feels natural | Requires sandbox entitlement, user permission prompt, breaks on fresh install | Never for app-managed data; use `~/Library/Application Support/<bundle-id>/` |
-| Ignoring `SMAppService`, using old `LaunchAtLogin` helper | Works on older macOS | `SMAppService` is the required API for macOS 13+; old approaches fail silently | Only if supporting macOS < 13, otherwise use `SMAppService` |
+| Apply `.onMove()` without drag handles | Simpler — one line | Tap-to-focus delay on every interactive row element; hard to remove later | Never — drag handles are required from day one |
+| Use `squareLength` and composite badge into image | Reuses existing icon setup | Template rendering inverts badge color in dark mode; requires per-OS appearance observation | Never — switch to `variableLength` + `button.title` for badge text |
+| Skip `.onInsert` empty handler alongside `.onMove` | One less line | Crashes when any external drag lands on the panel | Never — costs one line; prevents a crash |
+| No confirmation on bulk-clear | Faster to implement | Users accidentally destroy completed task history | Never for v1.1; add dialog from the start |
+| Skip disabling hotkey during recorder capture | No extra code | Current hotkey fires and opens panel during recorder interaction | Never — one `KeyboardShortcuts.disable()` call prevents this |
 
 ---
 
@@ -155,11 +357,11 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| `SMAppService` (launch at login) | Reading stored local preference for "is enabled" state | Always query `SMAppService.mainApp.status` at runtime — user can toggle it outside your app |
-| `CGEventTap` callback | Capturing `self` or context in the C callback closure | C callback cannot capture context; use a global function and pass context via `userInfo` pointer |
-| `NSPanel` + SwiftUI | Using `View.onAppear` to detect panel becoming visible | Panel does not fire `onAppear` reliably on re-show; observe `NSWindow.didBecomeKeyNotification` instead |
-| `MenuBarExtra` (SwiftUI) | Using `.onAppear` to refresh data when popover opens | Subscribe to `NSPopover.willShowNotification` or use `NotificationCenter` for reliable refresh |
-| File I/O for task persistence | Writing on every keystroke / checkbox tap | Debounce writes; write on a background queue; use atomic writes (`Data.write(to:options:.atomic)`) |
+| `NSStatusItem` badge + `@Observable TaskStore` | Observing `store.tasks.count` from AppKit (AppDelegate is not a SwiftUI view and does not auto-observe `@Observable`) | Use `NotificationCenter` or add a dedicated `taskCountDidChange` callback from `TaskStore` to `AppDelegate.updateBadge()`, or use `withObservationTracking` explicitly |
+| `KeyboardShortcuts.Recorder` in `NSHostingView`-hosted `SettingsView` | Recorder appears but is unresponsive — settings window is not key | Call `PanelManager.shared.hide()` before making the settings window key; panel `resignKey()` may race with window becoming key |
+| `.onMove` + `@Observable TaskStore` | `store.tasks` is not a `Binding<[Task]>` — `onMove` requires a `ForEach` bound to a mutable binding | Expose `tasks` as a `Binding` or use `$tasks` on `@Bindable` wrapper; alternatively drive `onMove` off a local `@State` copy and sync back to store |
+| Bulk-clear animation + `ContentUnavailableView` overlay | Empty state overlay appears before removal animation completes, causing overlap flicker | Delay overlay appearance by 1 animation frame using `.animation(.default.delay(0.15), value: store.tasks.isEmpty)` |
+| `KeyboardShortcuts` disable/enable around recorder | Disabling at recorder focus and re-enabling on dismiss only — misses the case where Settings window closes while recording | Observe `NSWindow.willCloseNotification` for the settings window and call `KeyboardShortcuts.enable(.togglePanel)` as a safety net |
 
 ---
 
@@ -167,20 +369,8 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Synchronous file write on main thread | Visible stutter when checking/unchecking tasks; beach ball on large lists | Dispatch writes to a serial background queue; return immediately on main | ~100+ tasks or slow disk (external drive, spinning HDD) |
-| Re-rendering entire task list on every state change | Sluggish scrolling / animation; high CPU on checkbox tap | Use `@Observable` with fine-grained state; avoid rebuilding the whole list from a single toggle | ~50+ tasks with animations |
-| `CGEventTap` with `.default` tap (not listen-only) blocking the event loop | Keyboard input delays system-wide; other apps lag | Use `.listenOnly` unless event interception is explicitly required | Immediately on install; affects all keyboard use |
-| Polling for NSStatusItem visibility | Battery drain; unnecessary CPU cycles | There is no API to detect icon hidden by notch — don't poll; accept the limitation | N/A — never build this |
-
----
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Storing task content in `UserDefaults` | Task data unencrypted in a world-readable `.plist` in `~/Library/Preferences` | Store in `~/Library/Application Support/<bundle-id>/` with appropriate file permissions (0600); for sensitive content consider Keychain |
-| Requesting Accessibility permission without clear justification in UI | macOS Sequoia's tightened permission UI shows vague system prompt; users deny; app breaks | Show in-app permission onboarding before triggering the system prompt; explain in plain language what the permission does |
-| Using `UserDefaults.standard` across process boundaries (e.g. helper app) | Data shared unintentionally with other apps using same suite name | Use app-group containers only if explicitly sharing; otherwise use standard app container |
+| Recompositing badge `NSImage` on every task count change | CPU spike on every `toggle()` / `add()` / `delete()` call, especially during rapid task entry | Cache the badge image per count value (0-99 is finite); only recomposite when count changes | Immediately visible with >5 task operations per second |
+| `TaskStore.clearCompleted()` calling `persist()` once is sufficient | `persist()` called multiple times per clear (e.g., once per removed task if implemented with `forEach { delete($0) }`) | Implement `clearCompleted()` as a single `tasks.removeAll { }` + single `persist()` — not as repeated `delete()` calls | Any bulk-clear operation; scales with number of completed tasks |
 
 ---
 
@@ -188,27 +378,28 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Panel does not return focus to the previous app after dismissal | User has to re-click their previous app after every task capture | Override `resignKey()` in the NSPanel subclass to call `NSApp.deactivate()` or store the previous frontmost app and re-activate it |
-| Permission prompt fires with no context during first launch | Users deny because they don't understand why a task app needs keyboard monitoring | Show in-app onboarding screen before triggering the system prompt: explain the global hotkey requires Input Monitoring, what it is used for, and that it only fires on the hotkey |
-| Hotkey conflicts with Spotlight (Cmd+Space) or other common shortcuts | App silently does nothing; users think app is broken | Default to a non-conflicting hotkey (e.g. Cmd+Shift+Space or user-defined); use `KeyboardShortcuts` library which detects conflicts |
-| Menu bar icon disappears behind MacBook notch | App becomes inaccessible to users on notch MacBooks | Use template images (black/white rendered by system); instruct users to use Bartender or Ice if needed; no API to detect notch hiding |
-| Completed tasks disappear immediately on check | Users lose items they may want to reference | Follow the brief: fade completed tasks but keep them visible; provide explicit "Clear completed" action |
-| App steals focus from active app on every hotkey press | Interrupts user workflow; feels invasive | Use `.nonactivatingPanel` — panel appears without activating the app; typing goes into the panel without disrupting the prior app |
+| Badge shows zero when there are no tasks (displays "0" in menu bar) | Cluttered, confusing — users expect no badge when nothing is pending | Only show badge when count > 0; set `button.title = ""` when count is 0 to collapse the item |
+| Badge counts completed tasks alongside active tasks | Badge includes items the user already handled; feels inaccurate | Badge should count only *incomplete* (active) tasks: `store.tasks.filter { !$0.isCompleted }.count` |
+| Drag handle is always visible (not hover-triggered) | Visual clutter; every row has a drag affordance at all times | Show drag handle only on row hover via `onHover` — standard macOS table row pattern |
+| "Clear Completed" button is visible when there are no completed tasks | Confusing empty action; invites tapping a disabled or no-op button | Hide or disable the button when `store.tasks.filter { $0.isCompleted }.isEmpty` |
+| Configurable hotkey resets to default when user clears the recorder field | User loses their custom shortcut; must re-enter it | Allow "no shortcut" as a valid state; do not auto-revert to default; let `KeyboardShortcuts` store nil shortcut |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Global hotkey:** Works when the app is *not* in focus — test by switching to Safari then pressing the hotkey
-- [ ] **Panel focus:** Text field in panel accepts keyboard input immediately without clicking it first
-- [ ] **Panel dismissal:** Panel closes when user clicks outside it; focus returns to previous app automatically
-- [ ] **Persistence:** Task list survives: app quit, macOS restart, and app update (data file location survives updates)
-- [ ] **Menu bar icon:** Icon persists after returning from sleep; after screen lock; after display changes
-- [ ] **Settings window:** Opens from menu bar item on a fresh install (not just during development sessions)
-- [ ] **Launch at login:** `SMAppService` status is queried fresh on each settings view appearance — not stored locally
-- [ ] **Permission prompt:** Input Monitoring prompt appears and is re-requestable if denied; app degrades gracefully if denied rather than crashing
-- [ ] **Hotkey conflicts:** Default hotkey does not conflict with Spotlight (Cmd+Space), Mission Control, or Screenshot (Cmd+Shift+3/4/5)
-- [ ] **Atomic writes:** Task file writes use `.atomic` option; test by force-quitting mid-write and verifying no corruption
+- [ ] **Badge:** Shows correct count of *incomplete* tasks only — verify by completing all tasks and confirming badge disappears
+- [ ] **Badge dark mode:** Badge is readable in both light and dark menu bar — test with Appearance set to Dark in System Settings
+- [ ] **Badge threading:** Badge updates on main actor — verify with Xcode Thread Sanitizer enabled
+- [ ] **Drag-reorder:** Tapping a checkbox immediately toggles it — no delay after drag-reorder is added
+- [ ] **Drag-reorder crash guard:** Drag a file from Finder onto the panel while the task list is visible — no crash
+- [ ] **Drag-reorder persistence:** Task order after reorder survives app quit + relaunch
+- [ ] **KeyboardShortcuts.Recorder responsive:** Clicking the recorder field in Settings starts recording immediately — verified after opening Settings while panel was previously visible
+- [ ] **Hotkey not stolen during recording:** Pressing current hotkey combination while recorder is active does not toggle the panel
+- [ ] **Bulk-clear confirmation:** "Clear Completed" shows a confirmation dialog before destroying data
+- [ ] **Bulk-clear count:** Confirmation dialog states how many tasks will be deleted
+- [ ] **Bulk-clear animation:** Rows animate out rather than disappearing instantly (test on real macOS hardware)
+- [ ] **Bulk-clear persistence:** After clear, relaunching the app does not bring back cleared tasks
 
 ---
 
@@ -216,11 +407,14 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Wrong global hotkey API (NSEvent instead of CGEventTap/Carbon) | MEDIUM | Swap to `KeyboardShortcuts` library; test permission flow from scratch on a fresh user account |
-| Standard `Window` scene used instead of `NSPanel` subclass | HIGH | Rebuild panel hosting layer; SwiftUI views can be reused but the windowing glue must be torn out |
-| UserDefaults used for task list storage | MEDIUM | Write migration code to read old UserDefaults format and write to new JSON file; keep for one release then remove |
-| Accessibility permission requested in sandboxed build | HIGH | Rebuild hotkey implementation with `CGEventTap` + Input Monitoring; re-submit to App Store; old users must re-grant permission |
-| Task data written to Documents (permission-gated path) | MEDIUM | Migrate file to Application Support on next launch; test migration on fresh sandbox |
+| Badge composite breaks dark mode | LOW | Switch from image compositing to `button.title` text approach; 1-2 hours |
+| `squareLength` clips badge | LOW | Change to `variableLength`; update image positioning; 30 minutes |
+| `.onMove` without drag handles ships and causes UX complaints | MEDIUM | Add drag handle + `moveDisabled()` overlay to `TaskRowView`; requires testing on device |
+| `.onInsert` missing, crash on external drop | LOW | Add one `.onInsert(of:perform:)` call; 5 minutes |
+| Recorder unresponsive in Settings | LOW | Add `PanelManager.shared.hide()` before `makeKeyAndOrderFront`; 15 minutes |
+| Hotkey fires during recorder capture | LOW | Add `KeyboardShortcuts.disable(.togglePanel)` wrapper; 30 minutes |
+| Bulk-clear has no confirmation | LOW | Add `confirmationDialog` modifier; 30 minutes |
+| Bulk-clear calls `persist()` N times instead of once | LOW | Refactor to `removeAll` + single `persist()`; 10 minutes |
 
 ---
 
@@ -228,36 +422,32 @@ Phase 1 (Core hotkey + panel scaffold) — permission architecture is baked in; 
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| SwiftUI `.keyboardShortcut()` in background | Phase 1: Core hotkey + panel scaffold | Press hotkey while Safari is focused; task panel must appear |
-| Window behind other apps (activation policy) | Phase 1: Core hotkey + panel scaffold | Press hotkey while video is playing fullscreen; panel must appear on top |
-| No NSPanel subclass | Phase 1: Core hotkey + panel scaffold | Click outside panel; it must dismiss. Text field must accept typing immediately |
-| NSStatusItem not retained | Phase 1: Core hotkey + panel scaffold | Launch app, switch to another app, return — icon still present |
-| Wrong permission API (Accessibility vs Input Monitoring) | Phase 1: Core hotkey + panel scaffold | Build and install from archive (not Xcode) on a fresh account; check permission prompt type |
-| SettingsLink silent failure | Phase 2: Settings/preferences | Open Settings from menu bar item on clean install; window must appear |
-| Task data in UserDefaults | Phase 2: Settings/preferences | Confirm tasks stored in `~/Library/Application Support/`, not `~/Library/Preferences/` |
-| Focus not returning to previous app | Phase 1: Core hotkey + panel scaffold | Open panel, dismiss with Esc — cursor must be active in previous app |
-| Permission prompt with no context | Phase 1 or dedicated onboarding task | First launch on fresh account; in-app explanation appears before system prompt |
-| Hotkey conflict with system shortcuts | Phase 1: Core hotkey + panel scaffold | Verify default shortcut; document in README; `KeyboardShortcuts` conflict detection |
+| Badge composite breaks `isTemplate` dark mode | v1.1 Phase 1: Badge | Toggle system appearance while app is running; badge remains readable |
+| Badge clips with `squareLength` | v1.1 Phase 1: Badge | Add 10 tasks; confirm badge number is fully visible in menu bar |
+| Badge updated off main thread | v1.1 Phase 1: Badge | Run with TSan enabled; no thread-checker warnings |
+| `onMove` delays tap-to-focus | v1.1 Phase 2: Drag-reorder | Tap checkbox immediately after enabling reorder; response must be instant |
+| Cross-list drop crash | v1.1 Phase 2: Drag-reorder | Drag a file from Finder onto the panel; no crash |
+| Wrong `move()` index arithmetic | v1.1 Phase 2: Drag-reorder | Move tasks to top, bottom, and middle; verify correct final order |
+| Recorder unresponsive in Settings | v1.1 Phase 3: Configurable hotkey | Open Settings immediately after using panel hotkey; recorder must be clickable |
+| Hotkey stolen during recorder capture | v1.1 Phase 3: Configurable hotkey | Press current shortcut while recorder is active; panel must not open |
+| Bulk-clear has no animation | v1.1 Phase 4: Bulk-clear | Clear 5+ completed tasks; rows must animate out |
+| Bulk-clear has no confirmation | v1.1 Phase 4: Bulk-clear | Tap "Clear Completed"; confirmation dialog must appear before any deletion |
 
 ---
 
 ## Sources
 
-- [Showing Settings from macOS Menu Bar Items: A 5-Hour Journey (Peter Steinberger, 2025)](https://steipete.me/posts/2025/showing-settings-from-macos-menu-bar-items) — SettingsLink failure, activation policy juggling, hidden window workaround
-- [Make a floating panel in SwiftUI for macOS (Cindori)](https://cindori.com/developer/floating-panel) — NSPanel subclassing, style masks, canBecomeKey, safe area
-- [Nailing the Activation Behavior of a Spotlight/Raycast-Like Command Palette (Multi.app)](https://multi.app/blog/nailing-the-activation-behavior-of-a-spotlight-raycast-like-command-palette) — NSPanel focus return to previous app, resignKey override
-- [KeyboardShortcuts library (sindresorhus)](https://github.com/sindresorhus/KeyboardShortcuts) — sandbox-compatible global hotkeys, Input Monitoring (not Accessibility)
-- [HotKey library (soffes)](https://github.com/soffes/HotKey) — simpler hard-coded global shortcuts
-- [Accessibility permission in sandboxed app (Apple Developer Forums)](https://developer.apple.com/forums/thread/707680) — Accessibility vs Input Monitoring permission model
-- [Accessibility Permission in macOS (jano.dev, 2025)](https://jano.dev/apple/macos/swift/2025/01/08/Accessibility-Permission.html) — CGEventTap permission modes
-- [Fine-Tuning macOS App Activation Behavior (artlasovsky.com)](https://artlasovsky.com/fine-tuning-macos-app-activation-behavior) — activation policy focus stealing
-- [FB7539293: SwiftUI view in NSMenuItem memory leak (feedback-assistant/reports)](https://github.com/feedback-assistant/reports/issues/84) — NSStatusItem memory management
-- [FB11984872: MenuBarExtra no programmatic close API (feedback-assistant/reports)](https://github.com/feedback-assistant/reports/issues/383) — MenuBarExtra API gaps
-- [MacBook Notch and Menu Bar Fixes (Jesse Squires, 2023)](https://www.jessesquires.com/blog/2023/12/16/macbook-notch-and-menu-bar-fixes/) — NSStatusItem notch visibility limitation
-- [Launch at Login Setting (nilcoalescing.com)](https://nilcoalescing.com/blog/LaunchAtLoginSetting/) — SMAppService correct usage
-- [macOS Sandbox Bookmark Paths (Chris Paynter, Medium)](https://chrispaynter.medium.com/macos-sandbox-bookmark-file-system-paths-to-avoid-asking-for-access-permission-each-time-your-709fd59a4ff6) — Application Support vs Documents sandbox behavior
-- [How to properly realize global hotkeys on macOS? (Apple Developer Forums)](https://developer.apple.com/forums/thread/735223) — CGEventTap vs NSEvent for global monitoring
+- [SwiftUI List reordering with text field conflict — NilCoalescing](https://nilcoalescing.com/blog/ListReorderingWhileStillBeingAbleToEditTheListItems/) — onMove + hover drag handle pattern, `moveDisabled()` approach; MEDIUM confidence
+- [FB7367473: SwiftUI onMove stops working with tap gesture on macOS (feedback-assistant/reports)](https://github.com/feedback-assistant/reports/issues/46) — gesture conflict confirmed open as of October 2024; MEDIUM confidence
+- [SwiftUI onMove crash without onInsert (SmallDeskSoftware)](https://software.small-desk.com/en/swiftui-en/2021/03/28/swiftui-how-to-prevent-unexpected-crash-from-using-onmove-with-swiftui-list-foreach-investigation-memo/) — "Fatal error: Attempting to insert row" root cause and `.onInsert` guard; MEDIUM confidence
+- [KeyboardShortcuts library README (sindresorhus/KeyboardShortcuts)](https://github.com/sindresorhus/KeyboardShortcuts) — Recorder SwiftUI integration, `disable()`/`enable()` API; HIGH confidence
+- [KeyboardShortcuts Issue #133 — Recorder size in SwiftUI](https://github.com/sindresorhus/KeyboardShortcuts/issues/133) — `.frame()` sizing does not work on Recorder; enhancement open; MEDIUM confidence
+- [NSStatusItem Apple Developer Documentation](https://developer.apple.com/documentation/appkit/nsstatusitem) — `squareLength`, `variableLength`, `button.title`, `button.image` API; HIGH confidence
+- [NSImage.isTemplate Apple Developer Documentation](https://developer.apple.com/documentation/appkit/nsimage/istemplate) — template image rendering behavior; HIGH confidence
+- [The Curious Case of NSPanel's Nonactivating Style Mask Flag (philz.blog)](https://philz.blog/nspanel-nonactivating-style-mask-flag/) — NSPanel key window timing behavior with style mask; MEDIUM confidence
+- [SwiftUI confirmationDialog — Swift with Majid](https://swiftwithmajid.com/2021/07/28/confirmation-dialogs-in-swiftui/) — macOS 12+ `confirmationDialog` pattern for destructive bulk actions; MEDIUM confidence
+- [Array.move(fromOffsets:toOffset:) — Swift Standard Library](https://developer.apple.com/documentation/swift/array/move(fromoffsets:tooffset:)) — canonical implementation for onMove callback; HIGH confidence
 
 ---
-*Pitfalls research for: macOS menu bar app (QuickTask) — global hotkey + floating panel + local persistence*
-*Researched: 2026-02-17*
+*Pitfalls research for: QuickTask v1.1 milestone — badge, drag-reorder, configurable hotkey, bulk-clear*
+*Researched: 2026-02-18*
