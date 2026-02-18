@@ -21,16 +21,14 @@ struct HiddenWindowView: View {
         Color.clear
             .frame(width: 1, height: 1)
             .onReceive(NotificationCenter.default.publisher(for: .openSettingsRequest)) { _ in
-                Swift.Task { @MainActor in
-                    // Must switch to .regular so macOS brings the Settings window to front.
-                    // See: Peter Steinberger "Showing Settings from macOS Menu Bar Items: A 5-Hour Journey"
-                    NSApp.setActivationPolicy(.regular)
-                    try? await Task.sleep(for: .milliseconds(100))
+                // Must switch to .regular so macOS brings the Settings window to front.
+                NSApp.setActivationPolicy(.regular)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     NSApp.activate(ignoringOtherApps: true)
                     openSettings()
-                    // Restore after a brief pause for the settings window to appear.
-                    try? await Task.sleep(for: .milliseconds(200))
-                    NSApp.setActivationPolicy(.accessory)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NSApp.setActivationPolicy(.accessory)
+                    }
                 }
             }
     }
