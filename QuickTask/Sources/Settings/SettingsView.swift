@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import KeyboardShortcuts
 
 struct SettingsView: View {
     @State private var launchAtLogin = false
@@ -19,10 +20,18 @@ struct SettingsView: View {
             } header: {
                 Text("General")
             }
+            Section {
+                KeyboardShortcuts.Recorder("Toggle Panel:", name: .togglePanel)
+                Button("Reset to Default") {
+                    KeyboardShortcuts.reset(.togglePanel)
+                }
+            } header: {
+                Text("Keyboard Shortcut")
+            }
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 400, height: 150)
+        .frame(width: 400, height: 250)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
