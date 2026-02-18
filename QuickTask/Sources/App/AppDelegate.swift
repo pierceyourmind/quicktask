@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 
 /// AppDelegate manages the core app lifecycle for QuickTask.
@@ -16,6 +17,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// MUST be an instance property — NOT a local var — to survive ARC.
     private var statusItem: NSStatusItem!
 
+    /// Retained reference to the TaskStore for badge observation.
+    /// Created once in applicationDidFinishLaunching and passed to PanelManager.
+    private var taskStore: TaskStore!
+
     /// Settings window — retained to prevent ARC deallocation on repeated opens.
     private var settingsWindow: NSWindow?
 
@@ -26,8 +31,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         setupStatusItem()
-        PanelManager.shared.configure(with: TaskStore())
+        let store = TaskStore()
+        self.taskStore = store
+        PanelManager.shared.configure(with: store)
         HotkeyService.shared.register()
+        observeBadge()
 
         print("[QuickTask] App launched as menu bar agent")
     }

@@ -30,6 +30,17 @@ import Observation
         tasks = repository.loadAll()
     }
 
+    // MARK: - Computed Properties
+
+    /// The count of tasks that have not yet been completed.
+    ///
+    /// Computed from `tasks` — the @Observable macro tracks reads of `tasks` here,
+    /// so any withObservationTracking call that reads `incompleteCount` will re-fire
+    /// whenever `tasks` mutates (add, toggle, delete).
+    var incompleteCount: Int {
+        tasks.filter { !$0.isCompleted }.count
+    }
+
     // MARK: - Mutations
 
     /// Appends a new task with the given title.
