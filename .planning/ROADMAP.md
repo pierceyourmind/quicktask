@@ -25,7 +25,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 - [ ] **Phase 4: Task Count Badge** — Active task count visible in menu bar icon; hides at zero
 - [ ] **Phase 5: Drag-to-Reorder** — Tasks reorderable via drag handle; order persists
 - [ ] **Phase 6: Configurable Hotkey** — User can record a custom panel toggle shortcut in Settings
-- [ ] **Phase 7: Bulk-Clear Completed** — One-tap cleanup of completed tasks with confirmation
+- [x] **Phase 7: Bulk-Clear Completed** — One-tap cleanup of completed tasks with confirmation (completed 2026-02-18)
 
 ## Phase Details
 
@@ -86,7 +86,7 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 | 4. Task Count Badge | v1.1 | 0/1 | Planned | - |
 | 5. Drag-to-Reorder | v1.1 | 0/? | Not started | - |
 | 6. Configurable Hotkey | v1.1 | 0/? | Not started | - |
-| 7. Bulk-Clear Completed | v1.1 | 0/? | Not started | - |
+| 7. Bulk-Clear Completed | v1.1 | Complete    | 2026-02-18 | - |
 
 ---
 
