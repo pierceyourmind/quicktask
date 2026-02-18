@@ -105,11 +105,11 @@ Plans:
 - Use `Defaults` SPM 9.0.6 for type-safe preference storage
 - Menu bar icon must be a template image (`.template`) so macOS applies the correct tint for light/dark menu bar
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: SMAppService launch-at-login, Defaults SPM preferences, Settings window (hidden Window scene workaround)
-- [ ] 03-02: Empty state view, panel open/close animation, menu bar template icon, app icon
+- [ ] 03-01-PLAN.md — Settings window (hidden Window scene workaround), right-click context menu, SMAppService launch-at-login toggle, Defaults SPM dependency, template image
+- [ ] 03-02-PLAN.md — Empty state view (ContentUnavailableView), panel open/close animation (animationBehavior)
 
 ---
 
@@ -200,4 +200,4 @@ Drag-to-reorder has a known SwiftUI text-field conflict that adds non-trivial im
 ---
 
 *Roadmap created: 2026-02-17*
-*Last updated: 2026-02-17 after Phase 2 planning*
+*Last updated: 2026-02-17 after Phase 3 planning*
