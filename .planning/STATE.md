@@ -46,8 +46,14 @@ None.
 - [Open]: Runtime verification on macOS hardware still pending — dev environment is Linux (Fedora)
 - [Open]: App Store vs. direct distribution decision deferred
 
+## Quick Tasks
+
+| # | Name | Status | Summary | Date |
+|---|------|--------|---------|------|
+| 1 | Share app as single file | Done | DMG packaging script via hdiutil | 2026-02-18 |
+
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed v1.0 milestone archival.
+Stopped at: Completed quick-1 (share app as single file).
 Resume file: None
