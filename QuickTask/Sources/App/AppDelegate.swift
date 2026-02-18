@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// AppDelegate manages the core app lifecycle for QuickTask.
 ///
@@ -14,6 +15,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Strong reference to the NSStatusItem (menu bar icon).
     /// MUST be an instance property — NOT a local var — to survive ARC.
     private var statusItem: NSStatusItem!
+
+    /// Settings window — retained to prevent ARC deallocation on repeated opens.
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Suppress the Dock icon at runtime. This is the reliable approach for
@@ -97,32 +101,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.popUp(positioning: nil, at: .zero, in: button)
     }
 
-    /// Opens the SwiftUI Settings scene from AppKit.
-    /// Switches to .regular so macOS allows the Settings window to appear.
-    /// Restores .accessory when the Settings window closes (observed via notification).
+    /// Opens a Settings window hosting SettingsView directly via NSWindow + NSHostingView.
+    /// Bypasses SwiftUI Settings scene which doesn't work reliably in SPM-built app bundles.
     @objc private func openSettingsFromMenu() {
+        if let existing = settingsWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 150),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "QuickTask Settings"
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        settingsWindow = window
+
         NSApp.setActivationPolicy(.regular)
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
 
-        // Try both selectors — showSettingsWindow: (macOS 14+) and showPreferencesWindow: (macOS 13)
-        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
+// MARK: - NSWindowDelegate
 
-        // Restore .accessory when the Settings window closes
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            guard let window = notification.object as? NSWindow,
-                  window.title.contains("Settings") || window.title.contains("Preferences") else { return }
-            NSApp.setActivationPolicy(.accessory)
-            // Remove this one-shot observer
-            if let self = self {
-                NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: nil)
-            }
-        }
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === settingsWindow else { return }
+        NSApp.setActivationPolicy(.accessory)
     }
 }
 
