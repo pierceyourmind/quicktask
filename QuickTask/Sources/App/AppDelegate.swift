@@ -25,15 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         PanelManager.shared.configure(with: TaskStore())
         HotkeyService.shared.register()
 
-        // Hide the hidden helper window (1x1 SwiftUI scene declared in QuickTaskApp.swift).
-        // This prevents the tiny window artifact from appearing in the top-left corner of
-        // the screen (Pitfall 4 from Phase 3 research).
-        DispatchQueue.main.async {
-            if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "hidden-settings-bridge" }) {
-                window.orderOut(nil)
-            }
-        }
-
         print("[QuickTask] App launched as menu bar agent")
     }
 
@@ -106,11 +97,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.popUp(positioning: nil, at: .zero, in: button)
     }
 
-    /// Opens the Settings window by posting a notification to the SwiftUI hidden window bridge.
-    /// The notification is received by HiddenWindowView in QuickTaskApp.swift, which uses
-    /// @Environment(\.openSettings) to open the Settings {} scene.
+    /// Opens the SwiftUI Settings scene from AppKit.
+    /// Temporarily switches to .regular activation policy so macOS allows the window to appear,
+    /// then restores .accessory after it's shown.
     @objc private func openSettingsFromMenu() {
-        NotificationCenter.default.post(name: .openSettingsRequest, object: nil)
+        NSApp.setActivationPolicy(.regular)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
     }
 }
 
