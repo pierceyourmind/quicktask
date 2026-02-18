@@ -18,15 +18,10 @@ struct TaskRowView: View {
     @Environment(TaskStore.self) private var store
 
     let task: Task
-    @State private var isHovering = false
-
     var body: some View {
         HStack {
             Image(systemName: "line.3.horizontal")
                 .foregroundStyle(.tertiary)
-                .onHover { hovering in
-                    isHovering = hovering
-                }
 
             Toggle(
                 isOn: Binding(
@@ -52,6 +47,5 @@ struct TaskRowView: View {
         }
         .opacity(task.isCompleted ? 0.4 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
-        .moveDisabled(!isHovering)
     }
 }
