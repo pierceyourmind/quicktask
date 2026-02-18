@@ -50,7 +50,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. Hovering the drag handle and dragging reorders the task list in real time
   3. Tapping the checkbox on any task row works normally with no gesture delay or accidental reorder trigger
   4. Task order after a drag persists across app quit and relaunch
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 05-01-PLAN.md -- Drag handle, onMove reorder, and order persistence
 
 ### Phase 6: Configurable Hotkey
 **Goal**: Users whose default Cmd+Shift+Space conflicts with another app can record a replacement shortcut in Settings
