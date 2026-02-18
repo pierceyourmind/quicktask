@@ -41,6 +41,14 @@ import Observation
         tasks.filter { !$0.isCompleted }.count
     }
 
+    /// The count of tasks that have been completed.
+    /// Drives the "Clear N completed" button label and its conditional visibility in TaskListView.
+    /// The @Observable macro tracks reads of `tasks` here, so views reading this property
+    /// re-render whenever `tasks` mutates.
+    var completedCount: Int {
+        tasks.filter { $0.isCompleted }.count
+    }
+
     // MARK: - Mutations
 
     /// Appends a new task with the given title.
@@ -70,6 +78,14 @@ import Observation
     /// Called from TaskListView's onMove closure when the user drags a task via its handle.
     func move(fromOffsets source: IndexSet, toOffset destination: Int) {
         tasks.move(fromOffsets: source, toOffset: destination)
+        persist()
+    }
+
+    /// Removes all completed tasks in a single batch operation.
+    /// Uses removeAll(where:) for one in-place mutation + one persist() call.
+    /// Called only after user confirms the confirmation dialog in TaskListView.
+    func clearCompleted() {
+        tasks.removeAll(where: { $0.isCompleted })
         persist()
     }
 
