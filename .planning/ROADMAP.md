@@ -61,7 +61,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   1. The Settings window contains a hotkey recorder control where the user can click and press a new key combination
   2. After recording, the new shortcut immediately toggles the panel — the old shortcut stops working with no restart
   3. The user can reset the hotkey to the default (Cmd+Shift+Space) from the same Settings UI
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 06-01-PLAN.md -- Dependency bump, hotkey recorder + reset button in Settings, window resize
 
 ### Phase 7: Bulk-Clear Completed
 **Goal**: Users can remove all completed tasks in one action instead of deleting them one by one
