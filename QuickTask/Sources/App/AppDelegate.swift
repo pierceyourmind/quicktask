@@ -43,8 +43,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Status Item
 
     private func setupStatusItem() {
-        // Create the menu bar icon with a fixed square size
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        // Use variableLength so the status item width adjusts naturally as the badge
+        // digit count changes (e.g., single digit vs. double digit).
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         guard let button = statusItem.button else { return }
 
@@ -65,6 +66,54 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Enable both click types in a single action handler.
         // The handler reads NSApp.currentEvent to distinguish left vs right.
         button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+    }
+
+    // MARK: - Badge
+
+    /// Updates the menu bar button title to reflect the current incomplete task count.
+    ///
+    /// When count > 0: sets button.title to " N" (leading space for natural icon spacing).
+    /// When count == 0: sets button.title to "" to hide the badge and show icon-only.
+    ///
+    /// System default font and color are used — macOS automatically applies the correct
+    /// adaptive color (white in dark mode, black in light mode) without manual NSColor.
+    private func updateBadge() {
+        guard let button = statusItem.button else { return }
+        let count = taskStore.incompleteCount
+        if count > 0 {
+            button.title = " \(count)"
+        } else {
+            button.title = ""
+        }
+    }
+
+    /// Starts the reactive badge observation loop using the Observation framework.
+    ///
+    /// `withObservationTracking` is one-shot: it tracks which @Observable properties
+    /// are read in the apply closure, then fires `onChange` exactly once when any tracked
+    /// property changes. The recursive `observeBadge()` call in onChange re-registers
+    /// for the next change, forming a perpetual reactive loop.
+    ///
+    /// This is the standard pattern for AppKit code that cannot use @Observable
+    /// auto-tracking like SwiftUI views do.
+    ///
+    /// - `updateBadge()` is called first to show the correct count from persisted data
+    ///   immediately at launch (before any tasks are added or changed).
+    /// - `onChange` dispatches to main queue for safe UI updates.
+    private func observeBadge() {
+        // Show current badge state immediately (e.g., from persisted tasks at launch).
+        updateBadge()
+
+        // Register one-shot observation: tracks incompleteCount, fires once on change.
+        withObservationTracking {
+            _ = self.taskStore.incompleteCount
+        } onChange: { [weak self] in
+            // onChange fires on an arbitrary thread — dispatch to main for UI + re-register.
+            DispatchQueue.main.async {
+                self?.updateBadge()
+                self?.observeBadge()  // Re-register for next change (one-shot pattern).
+            }
+        }
     }
 
     // MARK: - Status Item Click Handling
