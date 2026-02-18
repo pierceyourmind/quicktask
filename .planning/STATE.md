@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 
 ## Current Position
 
-Phase: 2 of 3 v1 phases (Task Data Model, Persistence, and Capture UI) — COMPLETE
-Plan: 3 of 3 in current phase — COMPLETE
-Status: Phase 2 complete; ready to begin Phase 3
-Last activity: 2026-02-17 — Completed 02-03: TaskRowView with checkbox/strikethrough/opacity/delete; TaskListView updated
+Phase: 3 of 3 v1 phases (Settings, Launch at Login, v1 Polish) — IN PROGRESS
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 3 plan 2 complete; all v1 polish items done
+Last activity: 2026-02-18 — Completed 03-02: ContentUnavailableView empty state + FloatingPanel animationBehavior smooth animation
 
-Progress: [█████████░] 67%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 8
 - Average duration: ~3 min
-- Total execution time: ~18 min
+- Total execution time: ~24 min
 
 **By Phase:**
 
@@ -29,6 +29,7 @@ Progress: [█████████░] 67%
 |-------|-------|-------|----------|
 | 01-app-shell-hotkey-floating-panel | 3 | ~14 min | ~4 min |
 | 02-task-data-model-persistence-capture-ui | 3 | ~4 min | ~1.3 min |
+| 03-settings-launch-at-login-v1-polish | 2 | ~6 min | ~3 min |
 
 **Recent Trend:** 6 plans completed
 
@@ -66,6 +67,9 @@ Recent decisions affecting current work:
 - [02-03]: Completed tasks never filtered from list — TASK-03 requirement; only visual styling changes
 - [02-03]: .listRowSeparator(.hidden) on TaskRowView rows — row provides own structure; default separators add noise
 - [02-03]: Tasks display in insertion order — no sorting applied (research Open Question 3 resolved)
+- [03-02]: ContentUnavailableView (macOS 14+ native) over hand-rolled VStack/Text empty state — HIG-compliant, automatic accessibility, proper centering
+- [03-02]: animationBehavior = .utilityWindow over manual NSAnimationContext alpha approach — simpler, native, sufficient for v1
+- [03-02]: alphaValue = 1.0 reset before show() — guards against rapid toggle leaving panel invisible when animation is interrupted mid-fade
 
 ### Pending Todos
 
@@ -79,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 02-03-PLAN.md (TaskRowView with native macOS checkbox, strikethrough, 0.4 row opacity, delete button; TaskListView updated to render TaskRowView).
+Last session: 2026-02-18
+Stopped at: Completed 03-02-PLAN.md (ContentUnavailableView empty state on TaskListView; animationBehavior = .utilityWindow + alphaValue safety reset on FloatingPanel/PanelManager).
 Resume file: None
