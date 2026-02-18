@@ -66,6 +66,13 @@ import Observation
         persist()
     }
 
+    /// Reorders tasks by moving items at the given offsets to the new position.
+    /// Called from TaskListView's onMove closure when the user drags a task via its handle.
+    func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+        tasks.move(fromOffsets: source, toOffset: destination)
+        persist()
+    }
+
     // MARK: - Persistence
 
     /// Saves the full task list to disk. Called after every mutation.
