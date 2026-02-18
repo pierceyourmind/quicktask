@@ -67,6 +67,11 @@ class FloatingPanel<Content: View>: NSPanel {
         contentView = NSHostingView(rootView: rootView)
     }
 
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
     /// CRITICAL: Must return true so that text fields inside the hosted SwiftUI view
     /// can receive keyboard input. Without this override, NSPanel does not become key
     /// and all text input into any NSTextField / SwiftUI TextField is silently ignored.
