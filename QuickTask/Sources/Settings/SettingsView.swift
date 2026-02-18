@@ -8,8 +8,8 @@ struct SettingsView: View {
         Form {
             Section {
                 Toggle("Launch at login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, newValue in
-                        handleLaunchAtLoginChange(newValue)
+                    .onChange(of: launchAtLogin) {
+                        handleLaunchAtLoginChange(launchAtLogin)
                     }
                 if SMAppService.mainApp.status == .requiresApproval {
                     Text("Approval required in System Settings > General > Login Items")
