@@ -8,6 +8,16 @@ A lightweight macOS menu bar app that lets you instantly capture and check off t
 
 Zero-friction task capture — the moment a task enters your mind, one hotkey and a few keystrokes saves it before it vanishes.
 
+## Current Milestone: v1.1 Polish & Reorder
+
+**Goal:** Add task count badge, drag-to-reorder, configurable hotkey, and bulk-clear to polish the v1.0 experience.
+
+**Target features:**
+- Task count badge on menu bar icon
+- Drag-to-reorder tasks with drag handles
+- Configurable hotkey via recorder UI in Settings
+- Bulk-clear completed tasks ("Clear all done" button)
+
 ## Requirements
 
 ### Validated
@@ -70,4 +80,4 @@ Dev environment is Linux (Fedora) — runtime verification on macOS hardware sti
 | swift-tools-version 5.10 over 6.0 | Avoids strict concurrency errors before MainActor annotations | ✓ Good — pragmatic choice |
 
 ---
-*Last updated: 2026-02-18 after v1.0 milestone*
+*Last updated: 2026-02-18 after v1.1 milestone started*
