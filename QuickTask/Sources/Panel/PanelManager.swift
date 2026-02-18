@@ -88,6 +88,12 @@ final class PanelManager {
             display: true
         )
 
+        // Safety reset: ensure panel is fully opaque before showing.
+        // A rapid show/hide toggle can leave alphaValue stuck at 0 if a previous
+        // hide animation was interrupted mid-fade. Resetting here guarantees a
+        // visible panel regardless of animation state.
+        panel.alphaValue = 1.0
+
         // Bring the panel to front even when the app is not the active application.
         // `orderFrontRegardless()` is necessary for .accessory apps.
         panel.orderFrontRegardless()

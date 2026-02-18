@@ -58,6 +58,11 @@ class FloatingPanel<Content: View>: NSPanel {
 
         hasShadow = true
 
+        // Smooth fade animation for show/hide transitions.
+        // .utilityWindow provides a subtle, native fade appropriate for floating panels.
+        // macOS applies this automatically when orderFront/orderOut are called.
+        animationBehavior = .utilityWindow
+
         // Bridge SwiftUI content into AppKit panel
         contentView = NSHostingView(rootView: rootView)
     }
