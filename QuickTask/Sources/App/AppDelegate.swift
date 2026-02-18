@@ -98,15 +98,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Opens the SwiftUI Settings scene from AppKit.
-    /// Temporarily switches to .regular activation policy so macOS allows the window to appear,
-    /// then restores .accessory after it's shown.
+    /// Switches to .regular so macOS allows the Settings window to appear.
+    /// Restores .accessory when the Settings window closes (observed via notification).
     @objc private func openSettingsFromMenu() {
         NSApp.setActivationPolicy(.regular)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                NSApp.setActivationPolicy(.accessory)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Try both selectors — showSettingsWindow: (macOS 14+) and showPreferencesWindow: (macOS 13)
+        if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
+
+        // Restore .accessory when the Settings window closes
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let window = notification.object as? NSWindow,
+                  window.title.contains("Settings") || window.title.contains("Preferences") else { return }
+            NSApp.setActivationPolicy(.accessory)
+            // Remove this one-shot observer
+            if let self = self {
+                NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: nil)
             }
         }
     }
