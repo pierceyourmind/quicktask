@@ -14,9 +14,14 @@ struct TaskListView: View {
     @Environment(TaskStore.self) private var store
 
     var body: some View {
-        List(store.tasks) { task in
-            TaskRowView(task: task)
-                .listRowSeparator(.hidden)
+        List {
+            ForEach(store.tasks) { task in
+                TaskRowView(task: task)
+                    .listRowSeparator(.hidden)
+            }
+            .onMove { indices, newOffset in
+                store.move(fromOffsets: indices, toOffset: newOffset)
+            }
         }
         .listStyle(.plain)
         .overlay {
