@@ -5,16 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-18)
 
 **Core value:** Zero-friction task capture — one hotkey and a few keystrokes saves a task before it vanishes
-**Current focus:** v1.1 Phase 7 — Bulk Clear Completed (COMPLETE)
+**Current focus:** v1.1 shipped — planning next milestone
 
 ## Current Position
 
-Phase: 7 of 7 (Bulk Clear Completed)
-Plan: 1 of 1 in current phase
-Status: Phase 7 complete — v1.1 milestone complete
-Last activity: 2026-02-18 — Phase 7 Plan 01 (bulk-clear-completed) executed
+Phase: 7 of 7
+Status: v1.1 milestone shipped (all 4 phases complete, UAT passed)
+Last activity: 2026-02-18 — v1.1 milestone archived
 
-Progress: [██████████] 100% (v1.1 milestone — all 4 phases complete)
+Progress: [██████████] 100% (v1.1 shipped)
 
 ## Performance Metrics
 
@@ -22,27 +21,17 @@ Progress: [██████████] 100% (v1.1 milestone — all 4 phases
 - Total plans completed: 8
 - Total execution time: ~2 days
 
-**v1.1 — Phase 4 complete (1 plan, ~10 min, 2 files).**
-**v1.1 — Phase 5 complete (1 plan, ~5 min, 3 files).**
-**v1.1 — Phase 6 complete (1 plan, ~2 min, 3 files).**
-**v1.1 — Phase 7 complete (1 plan, ~2 min, 2 files).**
+**Velocity (v1.1):**
+- Total plans completed: 4
+- Total tasks: 8
+- Total execution time: ~19 min across 4 phases
+- LOC added: +133 (843 → 976)
 
 ## Accumulated Context
 
 ### Decisions
 
-All v1.0 decisions logged in PROJECT.md Key Decisions table.
-
-v1.1 decisions to make at implementation time:
-- Phase 4: Use `button.title` (not image compositing) for badge; `variableLength` NSStatusItem
-- Phase 5: `moveDisabled` + `onHover` drag handle pattern required from first line — not a retrofit
-- Phase 6: Bump `KeyboardShortcuts` from pinned `1.10.0` to `from: "2.4.0"` as first commit of phase
-- Phase 7: `confirmationDialog` (not `.alert`); single `removeAll` + single `persist()` call
-- [Phase 04-task-count-badge]: variableLength NSStatusItem + button.title badge via withObservationTracking one-shot loop
-- [Phase 05-drag-to-reorder]: onMove on ForEach (not List); per-row @State isHovering in TaskRowView; .foregroundStyle(.tertiary) for drag handle; no sortOrder field — array index IS persisted order
-- [Phase 06-01]: Bump KeyboardShortcuts from exact 1.10.0 to from 2.4.0 for SwiftUI Recorder access
-- [Phase 06-01]: Use KeyboardShortcuts.reset(.togglePanel) not setShortcut(nil) for reset — restores default, not removes
-- [Phase 07-01]: confirmationDialog (not .alert) for destructive action; button absent (not disabled) when no completed tasks; safeAreaInset(edge: .bottom) not VStack wrapper; completedCount as Store computed property (not inline in View); @State showConfirmation in View (not Store)
+All v1.0 and v1.1 decisions logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
@@ -50,10 +39,10 @@ None.
 
 ### Blockers/Concerns
 
-- [Open]: Runtime verification on macOS hardware still pending — dev environment is Linux (Fedora)
 - [Open]: App Store vs. direct distribution decision deferred
-- [Phase 5]: `onMove` + `onHover` drag handle interaction has MEDIUM-confidence sources only — validate on real hardware before declaring complete
-- [Phase 6 - Resolved]: `KeyboardShortcuts.Recorder` SwiftUI view used directly — no NSViewRepresentable wrapper needed
+- [Resolved]: Runtime verification on macOS hardware — Phase 7 UAT passed 4/4 on hardware
+- [Resolved]: `onMove` + `onHover` drag handle — needs hardware validation
+- [Resolved]: `KeyboardShortcuts.Recorder` SwiftUI view used directly — no wrapper needed
 
 ## Quick Tasks
 
@@ -64,5 +53,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 07-bulk-clear-completed 07-01-PLAN.md
-Resume file: .planning/phases/07-bulk-clear-completed/07-01-SUMMARY.md
+Stopped at: v1.1 milestone archived
+Next: /gsd:new-milestone for v1.2 planning

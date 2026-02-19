@@ -2,21 +2,11 @@
 
 ## What This Is
 
-A lightweight macOS menu bar app that lets you instantly capture and check off tasks via a global keyboard shortcut. Built in Swift with a hybrid SwiftUI + AppKit architecture for users who lose mental tasks because the friction of opening a full todo app is too high.
+A lightweight macOS menu bar app that lets you instantly capture, reorder, and manage tasks via a global keyboard shortcut. Built in Swift with a hybrid SwiftUI + AppKit architecture for users who lose mental tasks because the friction of opening a full todo app is too high.
 
 ## Core Value
 
 Zero-friction task capture — the moment a task enters your mind, one hotkey and a few keystrokes saves it before it vanishes.
-
-## Current Milestone: v1.1 Polish & Reorder
-
-**Goal:** Add task count badge, drag-to-reorder, configurable hotkey, and bulk-clear to polish the v1.0 experience.
-
-**Target features:**
-- Task count badge on menu bar icon
-- Drag-to-reorder tasks with drag handles
-- Configurable hotkey via recorder UI in Settings
-- Bulk-clear completed tasks ("Clear all done" button)
 
 ## Requirements
 
@@ -30,13 +20,14 @@ Zero-friction task capture — the moment a task enters your mind, one hotkey an
 - ✓ Menu bar icon for always-available access — v1.0
 - ✓ Floating panel appears near center of screen (Spotlight-style) — v1.0
 - ✓ Panel dismisses easily (Escape or click outside) — v1.0
+- ✓ Task count badge on menu bar icon, hidden at zero — v1.1
+- ✓ Drag-to-reorder tasks with drag handles, order persists — v1.1
+- ✓ Configurable hotkey via recorder UI in Settings with reset-to-default — v1.1
+- ✓ Bulk-clear completed tasks with confirmation dialog — v1.1
 
 ### Active
 
-- [ ] Task count badge on menu bar icon
-- [ ] Drag-to-reorder tasks with drag handles
-- [ ] Configurable hotkey via recorder UI in Settings
-- [ ] Bulk-clear completed tasks ("Clear all done" button)
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -48,14 +39,16 @@ Zero-friction task capture — the moment a task enters your mind, one hotkey an
 - Mobile companion app — macOS only (deliberate constraint)
 - Collaboration / sharing — personal tool
 - Markdown in tasks — titles are one-line; rich formatting irrelevant
+- Undo for bulk-clear — adds undo stack complexity disproportionate to the risk
 
 ## Context
 
-Shipped v1.0 with 843 LOC Swift across 15 source files.
-Tech stack: Swift 5.10 SPM, SwiftUI (macOS 14+), AppKit (NSPanel, NSStatusItem), KeyboardShortcuts 2.4.0, Defaults 9.0.0.
+Shipped v1.1 with 976 LOC Swift across 15 source files.
+Tech stack: Swift 5.10 SPM, SwiftUI (macOS 14+), AppKit (NSPanel, NSStatusItem), KeyboardShortcuts 2.4.0+, Defaults 9.0.0.
 Architecture: Hybrid SwiftUI + AppKit — SwiftUI for views, AppKit for NSPanel/NSStatusItem/global hotkey.
 Persistence: JSON at ~/Library/Application Support/QuickTask/tasks.json via synchronous FileStore.
-Dev environment is Linux (Fedora) — runtime verification on macOS hardware still pending.
+Patterns: withObservationTracking for AppKit-side reactive updates, safeAreaInset for footer overlays, moveDisabled/onHover for handle-gated drag.
+Phase 7 (bulk-clear) verified on macOS hardware via UAT — 4/4 tests passed.
 
 ## Constraints
 
@@ -78,6 +71,16 @@ Dev environment is Linux (Fedora) — runtime verification on macOS hardware sti
 | NotificationCenter bridge for Settings | @Environment(\.openSettings) unavailable in AppKit context | ✓ Good — clean workaround |
 | SMAppService queried at runtime | User can change launch-at-login in System Settings independently | ✓ Good — no stale state |
 | swift-tools-version 5.10 over 6.0 | Avoids strict concurrency errors before MainActor annotations | ✓ Good — pragmatic choice |
+| variableLength NSStatusItem + button.title for badge | Dynamic width for digit count; no image compositing needed | ✓ Good — simplest approach |
+| withObservationTracking one-shot loop for AppKit | Bridges @Observable to non-SwiftUI context without Combine | ✓ Good — clean reactive pattern |
+| onMove on ForEach (not List) for drag reorder | Only DynamicViewContent has onMove; List silently ignores it | ✓ Good — correct API surface |
+| moveDisabled + onHover for handle-gated drag | Prevents accidental reorders from checkbox/delete interactions | ✓ Good — clean gesture separation |
+| Array index as persisted order (no sortOrder field) | JSON array serialization preserves order naturally | ✓ Good — zero schema change |
+| KeyboardShortcuts 2.4.0+ for SwiftUI Recorder | v1.x had no SwiftUI recorder view; v2.x adds it natively | ✓ Good — drop-in control |
+| KeyboardShortcuts.reset() not setShortcut(nil) | reset restores default shortcut; nil removes it entirely | ✓ Good — correct semantics |
+| confirmationDialog not .alert for destructive action | confirmationDialog is the SwiftUI-native pattern for destructive confirms | ✓ Good |
+| safeAreaInset(edge: .bottom) not VStack wrapper | Preserves full List scrollable height; footer floats over content | ✓ Good |
+| confirmationDialog on List not conditional button | SwiftUI removes modifiers when parent view disappears | ✓ Good — dialog always available |
 
 ---
-*Last updated: 2026-02-18 after v1.1 milestone started*
+*Last updated: 2026-02-18 after v1.1 milestone shipped*
