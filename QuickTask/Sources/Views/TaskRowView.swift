@@ -18,6 +18,11 @@ struct TaskRowView: View {
     @Environment(TaskStore.self) private var store
 
     let task: Task
+
+    @State private var isEditing = false
+    @State private var editText = ""
+    @FocusState private var isTextFieldFocused: Bool
+
     var body: some View {
         HStack {
             Image(systemName: "line.3.horizontal")
@@ -29,8 +34,18 @@ struct TaskRowView: View {
                     set: { _ in store.toggle(task) }
                 )
             ) {
-                Text(task.title)
-                    .strikethrough(task.isCompleted)
+                if isEditing {
+                    TextField("Task title", text: $editText)
+                        .focused($isTextFieldFocused)
+                        .onSubmit { commitEdit() }
+                        .onChange(of: isTextFieldFocused) { _, focused in
+                            if !focused { commitEdit() }
+                        }
+                        .textFieldStyle(.plain)
+                } else {
+                    Text(task.title)
+                        .strikethrough(task.isCompleted)
+                }
             }
             .toggleStyle(.checkbox)
 
@@ -47,5 +62,29 @@ struct TaskRowView: View {
         }
         .opacity(task.isCompleted ? 0.4 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: task.isCompleted)
+        .contextMenu {
+            Button("Edit") {
+                beginEdit()
+            }
+        }
+    }
+
+    private func beginEdit() {
+        editText = task.title
+        isEditing = true
+        // Delay focus assignment to next run loop so TextField is mounted
+        DispatchQueue.main.async {
+            isTextFieldFocused = true
+        }
+    }
+
+    private func commitEdit() {
+        guard isEditing else { return }
+        isEditing = false
+        isTextFieldFocused = false
+        let trimmed = editText.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty && trimmed != task.title {
+            store.rename(task, to: trimmed)
+        }
     }
 }
