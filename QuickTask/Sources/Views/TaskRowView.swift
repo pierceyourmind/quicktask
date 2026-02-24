@@ -45,6 +45,7 @@ struct TaskRowView: View {
                 } else {
                     Text(task.title)
                         .strikethrough(task.isCompleted)
+                        .onTapGesture(count: 2) { beginEdit() }
                 }
             }
             .toggleStyle(.checkbox)
