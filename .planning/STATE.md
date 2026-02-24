@@ -49,9 +49,10 @@ None.
 | # | Name | Status | Summary | Date |
 |---|------|--------|---------|------|
 | 1 | Share app as single file | Done | DMG packaging script via hdiutil | 2026-02-18 |
+| 2 | Right-click edit task | Done | Inline title editing via context menu with Return/focus-loss commit | 2026-02-24 |
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: v1.1 milestone archived
+Last session: 2026-02-24
+Stopped at: Completed quick task 2 (right-click edit task)
 Next: /gsd:new-milestone for v1.2 planning
